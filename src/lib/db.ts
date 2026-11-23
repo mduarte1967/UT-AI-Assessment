@@ -17,13 +17,16 @@ export type ClientRow = {
   id: number
   razao_social: string
   nome_fantasia: string | null
-  cnpj: string | null
+  tax_id: string | null
+  country: string | null
+  estado_uf: string | null
+  cidade: string | null
+  postal_code: string | null
+  website: string | null
   vertical: string | null
   tamanho_faixa: string | null
   responsavel_nome: string
   responsavel_email: string
-  cidade: string | null
-  estado_uf: string | null
   ativo: number
   criado_em: string
   excluido_em: string | null
@@ -32,7 +35,7 @@ export type ClientRow = {
 let seedPromise: Promise<void> | null = null
 
 /** Bump when the seeded content changes (e.g. language of the question bank). */
-const SEED_VERSION = '2'
+const SEED_VERSION = '3'
 
 /** Legacy Portuguese option values written by v1 of the app, mapped to the English labels. */
 const LEGACY_VERTICAIS: Record<string, string> = {
@@ -141,6 +144,23 @@ export async function ensureSeed(env: Env): Promise<void> {
       .prepare("UPDATE admin_users SET nome = 'Practice Administrator' WHERE nome = 'Administrador da Prática'")
       .run()
 
+    // v3 — client model moved from the Brazilian layout (CNPJ / UF) to the
+    // US/Caribbean one (Tax ID / country / ZIP). Legacy CNPJ values become the
+    // Tax ID and records without a country default to Brazil, which is where
+    // they were captured.
+    await db
+      .prepare(
+        `UPDATE clients SET tax_id = cnpj
+          WHERE (tax_id IS NULL OR tax_id = '') AND cnpj IS NOT NULL AND cnpj <> ''`
+      )
+      .run()
+    await db
+      .prepare(
+        `UPDATE clients SET country = 'Brazil'
+          WHERE country IS NULL OR country = ''`
+      )
+      .run()
+
     await db
       .prepare(
         `INSERT INTO settings (key, value) VALUES ('seed_version', ?)
@@ -207,8 +227,9 @@ export type AssessmentFull = {
 
 export async function assessmentByToken(env: Env, token: string): Promise<AssessmentFull | null> {
   const row = await env.DB.prepare(
-    `SELECT a.*, c.id AS c_id, c.razao_social, c.nome_fantasia, c.cnpj, c.vertical, c.tamanho_faixa,
-            c.responsavel_nome, c.responsavel_email, c.cidade, c.estado AS estado_uf, c.ativo, c.criado_em AS c_criado_em
+    `SELECT a.*, c.id AS c_id, c.razao_social, c.nome_fantasia, c.tax_id, c.country, c.estado AS estado_uf,
+            c.cidade, c.postal_code, c.website, c.vertical, c.tamanho_faixa,
+            c.responsavel_nome, c.responsavel_email, c.ativo, c.criado_em AS c_criado_em
        FROM assessments a JOIN clients c ON c.id = a.client_id
       WHERE a.link_token = ? AND c.ativo = 1`
   )
@@ -229,13 +250,16 @@ export async function assessmentByToken(env: Env, token: string): Promise<Assess
       id: row.c_id,
       razao_social: row.razao_social,
       nome_fantasia: row.nome_fantasia,
-      cnpj: row.cnpj,
+      tax_id: row.tax_id,
+      country: row.country,
+      estado_uf: row.estado_uf,
+      cidade: row.cidade,
+      postal_code: row.postal_code,
+      website: row.website,
       vertical: row.vertical,
       tamanho_faixa: row.tamanho_faixa,
       responsavel_nome: row.responsavel_nome,
       responsavel_email: row.responsavel_email,
-      cidade: row.cidade,
-      estado_uf: row.estado_uf,
       ativo: row.ativo,
       criado_em: row.c_criado_em,
       excluido_em: null,

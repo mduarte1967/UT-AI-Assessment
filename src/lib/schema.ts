@@ -12,13 +12,16 @@ CREATE TABLE IF NOT EXISTS clients (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   razao_social TEXT NOT NULL,
   nome_fantasia TEXT,
-  cnpj TEXT,
+  tax_id TEXT,
+  country TEXT,
+  estado TEXT,
+  cidade TEXT,
+  postal_code TEXT,
   vertical TEXT,
   tamanho_faixa TEXT,
   responsavel_nome TEXT NOT NULL,
   responsavel_email TEXT NOT NULL,
-  cidade TEXT,
-  estado TEXT,
+  website TEXT,
   ativo INTEGER NOT NULL DEFAULT 1,
   criado_em TEXT NOT NULL DEFAULT (datetime('now')),
   criado_por TEXT,
@@ -128,4 +131,25 @@ CREATE TABLE IF NOT EXISTS sessions (
   expira_em TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_admin ON sessions(admin_id);
+CREATE TABLE IF NOT EXISTS signup_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ip TEXT,
+  email TEXT,
+  client_id INTEGER,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_signup_log_ip ON signup_log(ip, criado_em);
+`
+
+/**
+ * Columns added after the first release. `CREATE TABLE IF NOT EXISTS` above
+ * already includes them for fresh databases; these statements upgrade older
+ * ones. Each is applied with a swallowed error in the bootstrap loop, so
+ * re-running them on an up-to-date schema is harmless.
+ */
+export const COLUMN_MIGRATIONS = `
+ALTER TABLE clients ADD COLUMN tax_id TEXT;
+ALTER TABLE clients ADD COLUMN country TEXT;
+ALTER TABLE clients ADD COLUMN postal_code TEXT;
+ALTER TABLE clients ADD COLUMN website TEXT;
 `

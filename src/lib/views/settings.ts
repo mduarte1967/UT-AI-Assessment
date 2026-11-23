@@ -13,6 +13,8 @@ export function settingsPage(s: Settings, admin: { nome: string; email: string }
   flash?: { kind: 'ok' | 'warn' | 'danger' | 'info'; text: string } | null
   mailConfigured: boolean
   defaultPasswordActive: boolean
+  baseUrl?: string
+  signupSnippet?: string
 }): string {
   const keySet = !!s.mail_api_key
 
@@ -134,17 +136,72 @@ export function settingsPage(s: Settings, admin: { nome: string; email: string }
       </section>
     </div>
 
+    <section class="card" style="margin-top:18px" id="autocadastro">
+      <div class="card-head"><div>
+        <h2><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Public self-registration</h2>
+        <div class="sub">Lets a prospect register from the Unified Technologies website and receive the questionnaire by e-mail, with no admin action.</div>
+      </div>
+      ${s.self_signup !== '0' ? badge('Enabled', 'ok') : badge('Disabled', 'muted')}</div>
+
+      <form method="post" action="/configuracoes/autocadastro" novalidate>
+        <div class="field">
+          <label for="self_signup">Status</label>
+          <select id="self_signup" name="self_signup">
+            <option value="1" ${s.self_signup !== '0' ? 'selected' : ''}>Enabled — anyone with the link can register</option>
+            <option value="0" ${s.self_signup === '0' ? 'selected' : ''}>Disabled — only the administrator registers clients</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="signup_contact_email">Contact e-mail shown when registration is closed</label>
+          <input type="email" id="signup_contact_email" name="signup_contact_email" value="${esc(s.signup_contact_email || '')}" maxlength="160" placeholder="contato@unifiedtech.com">
+          <span class="hint">Optional. Shown on the closed-registration page.</span>
+        </div>
+        <button class="btn" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save self-registration</button>
+      </form>
+
+      <div class="divider"></div>
+      <h3 style="font-size:13px;margin-bottom:6px">Button for the Unified Technologies website</h3>
+      <p class="small muted" style="margin-top:0">
+        Paste this snippet into the site (WordPress: a <em>Custom HTML</em> block). It points at
+        <span class="mono">${esc(opts.baseUrl || '')}/comecar</span> and opens the registration form.
+      </p>
+      <div class="link-box" style="align-items:flex-start">
+        <i class="fa-solid fa-code" aria-hidden="true" style="margin-top:10px"></i>
+        <textarea id="signup-snippet" rows="7" readonly aria-label="Button embed code" style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.6">${esc(
+          opts.signupSnippet || ''
+        )}</textarea>
+        <button class="btn btn-sm btn-ghost" type="button" data-copy="signup-snippet"><i class="fa-regular fa-copy" aria-hidden="true"></i> Copy</button>
+      </div>
+      <p class="small muted" style="margin-top:8px">
+        The public form is always open to review at <a href="/comecar" target="_blank" rel="noopener" class="mono">/comecar</a>.
+        Registrations and failures are recorded in the audit trail under actor <span class="mono">self-signup</span>.
+      </p>
+    </section>
+
     <section class="card" style="margin-top:18px">
       <div class="card-head"><div><h2>How the client e-mail works</h2>
         <div class="sub">The client does <strong>not</strong> create an account. They receive a unique link.</div></div></div>
       <ol class="small" style="margin:0;padding-left:20px;line-height:1.9">
-        <li>You register the client, providing the <strong>contact e-mail</strong> (the person who will answer).</li>
+        <li>You register the client — or the prospect self-registers at <span class="mono">/comecar</span> — providing the <strong>contact e-mail</strong> (the person who will answer).</li>
         <li>The system creates the assessment and generates a <strong>unique link</strong> valid for ${esc(s.link_ttl_days)} days.</li>
         <li>With an API key configured, the invitation is <strong>sent automatically</strong>; without a key, the link appears on screen so you can copy it and send it from your own mailbox.</li>
         <li>The client opens the link, answers in ~30 minutes and gets the report immediately — no login.</li>
         <li>To change the recipient: edit the client. To generate another link: <em>Resend link</em> on the client record (the previous one is invalidated).</li>
       </ol>
       <div class="small muted" style="margin-top:10px">Settings last updated: ${esc(fmtDateTime(s.atualizado_em || new Date().toISOString()))}</div>
-    </section>`
+    </section>
+    <script>
+      document.addEventListener('click', function(e){
+        var b = e.target.closest('[data-copy]');
+        if (!b) return;
+        var el = document.getElementById(b.getAttribute('data-copy'));
+        if (!el) return;
+        if (el.select) el.select();
+        navigator.clipboard.writeText(el.value).then(function(){
+          var old = b.innerHTML; b.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+          setTimeout(function(){ b.innerHTML = old; }, 1600);
+        });
+      });
+    </script>`
   )
 }

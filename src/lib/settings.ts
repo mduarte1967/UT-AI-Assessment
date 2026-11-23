@@ -9,6 +9,8 @@ export const DEFAULTS: Settings = {
   mail_subject: 'Invitation — AI Maturity Assessment · {{empresa}}',
   mail_intro:
     'Unified Technologies has prepared the artificial intelligence readiness assessment for {{empresa}}. It covers 7 dimensions and around 20 questions — an estimated 30 minutes, in a single session.',
+  self_signup: '1',
+  signup_contact_email: '',
   admin_password_changed: '',
 }
 

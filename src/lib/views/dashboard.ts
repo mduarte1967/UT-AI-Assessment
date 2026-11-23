@@ -6,7 +6,8 @@ export type DashRow = {
   client_id: number
   razao_social: string
   nome_fantasia: string | null
-  cnpj: string | null
+  tax_id: string | null
+  country: string | null
   vertical: string | null
   tamanho_faixa: string | null
   responsavel_nome: string
@@ -103,7 +104,7 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
       return `<tr>
       <td>
         <div class="client-name"><a href="/clientes/${r.client_id}">${esc(nome)}</a></div>
-        <div class="client-sub">${esc(r.razao_social)}${r.vertical ? ` · ${esc(r.vertical)}` : ''}</div>
+        <div class="client-sub">${esc(r.razao_social)}${r.vertical ? ` · ${esc(r.vertical)}` : ''}${r.country ? ` · ${esc(r.country)}` : ''}</div>
       </td>
       <td>
         <div>${esc(r.responsavel_nome)}</div>
@@ -143,7 +144,7 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
         <form method="get" action="/painel" class="toolbar" style="flex:1;margin:0">
           <div class="search">
             <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-            <input type="search" name="q" value="${esc(data.filtros.q)}" placeholder="Search by company, contact, tax ID…" aria-label="Search clients">
+            <input type="search" name="q" value="${esc(data.filtros.q)}" placeholder="Search by company, contact, Tax ID, city…" aria-label="Search clients">
           </div>
           <select name="estado" aria-label="Filter by status">
             <option value="">All statuses</option>

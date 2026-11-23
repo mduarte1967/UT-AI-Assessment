@@ -8,13 +8,14 @@ export type ReportInput = {
   client: {
     razao_social: string
     nome_fantasia: string | null
-    cnpj: string | null
+    tax_id: string | null
     vertical: string | null
     tamanho_faixa: string | null
     responsavel_nome: string
     responsavel_email: string
     cidade: string | null
     estado_uf: string | null
+    country?: string | null
   }
   assessment: { id: number; versao: number; submetido_em: string | null; criado_em: string }
   questions: QRow[]
@@ -271,6 +272,7 @@ export function renderReport(r: ReportRender): string {
       <div><strong>${esc(formatIndex(data.indice.escala5))}/5</strong>Maturity index</div>
       <div><strong>${esc(c.vertical || 'Not provided')}</strong>Industry</div>
       <div><strong>${esc(c.tamanho_faixa || 'Not provided')}</strong>Company size</div>
+      <div><strong>${esc([c.cidade, c.estado_uf, c.country].filter(Boolean).join(', ') || 'Not provided')}</strong>Location</div>
       <div><strong>${esc(c.responsavel_nome)}</strong>Contact</div>
       <div><strong>v${r.versao}</strong>Report version</div>
       <div><strong>${esc(fmtDate(data.geradoEm))}</strong>Issued</div>

@@ -39,13 +39,16 @@ export function helpPage(o: HelpOpts): string {
 
   ${STEP(
     2,
-    'Register the client (and the e-mail of whoever will answer)',
-    `Under <strong>New client</strong>, provide the legal name, industry, company size and — most importantly — the
-     <strong>name and e-mail of the contact</strong>. That is the address the invitation goes to.
-     The system creates the assessment, generates a unique link and (if delivery is configured) sends the e-mail straight away.
-     Without delivery configured, the link appears on screen with a <em>Copy</em> button — you send it from your corporate mailbox.`,
+    'Register the client — or let the prospect self-register',
+    `Two paths, same result. <strong>Option A (manual):</strong> under <strong>New client</strong>, provide the legal name, industry,
+     company size and — most importantly — the <strong>name and e-mail of the contact</strong>. That is the address the invitation goes to.
+     <strong>Option B (self-registration):</strong> the prospect fills in the public form at
+     <span class="mono">/comecar</span> and the assessment is created automatically, with the link e-mailed to them.
+     Either way the system creates the assessment, generates a unique link and (if delivery is configured) sends the e-mail straight away.
+     Without delivery configured, the link appears on screen with a <em>Copy</em> button — you send it manually.`,
     `<a class="btn btn-sm" href="/clientes/novo"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Register client</a>
-     <a class="btn btn-sm btn-ghost" href="/configuracoes#email">Configure e-mail delivery</a>`
+     <a class="btn btn-sm btn-ghost" href="/comecar" target="_blank" rel="noopener">Open the public form</a>
+     <a class="btn btn-sm btn-ghost" href="/configuracoes#autocadastro">Self-registration settings</a>`
   )}
 
   ${STEP(
@@ -81,6 +84,14 @@ export function helpPage(o: HelpOpts): string {
     <div class="card-head"><div><h2>Frequently asked questions</h2></div></div>
     <div class="faq">
       <details open>
+        <summary>Can a prospect start the assessment without me doing anything?</summary>
+        <p>Yes. Point them at <span class="mono">/comecar</span> — or embed the ready-made button from
+        <a href="/configuracoes#autocadastro">Settings → Public self-registration</a> on the Unified Technologies website.
+        They fill in the form, receive the link by e-mail and the assessment appears on your dashboard under actor
+        <span class="mono">self-signup</span>. You can switch self-registration off at any time, and the form is protected
+        against duplicate e-mails, bots and repeated submissions from the same network.</p>
+      </details>
+      <details>
         <summary>Does the client need to create an account or password?</summary>
         <p>No. Access is through a <strong>unique tokenised link</strong> that expires in ${o.ttlDays} days.
         The link opens only that company's assessment. Whoever holds the link answers; nobody else sees the data.</p>
@@ -140,11 +151,12 @@ export function helpPage(o: HelpOpts): string {
       <tbody>
         <tr><td class="mono">/login</td><td>Administrator sign-in</td></tr>
         <tr><td class="mono">/painel</td><td>KPIs, clients and exports</td></tr>
+        <tr><td class="mono">/comecar</td><td>Public self-registration (no login)</td></tr>
         <tr><td class="mono">/clientes/novo</td><td>Registration + link generation</td></tr>
         <tr><td class="mono">/clientes/:id</td><td>Record, responses, reports and actions</td></tr>
         <tr><td class="mono">/a/:token</td><td>Client questionnaire (no login)</td></tr>
         <tr><td class="mono">/a/:token/relatorio</td><td>Client report (PDF/XLSX)</td></tr>
-        <tr><td class="mono">/configuracoes</td><td>Admin password and e-mail delivery</td></tr>
+        <tr><td class="mono">/configuracoes</td><td>Admin password, e-mail delivery and self-registration</td></tr>
       </tbody>
     </table>
   </section>

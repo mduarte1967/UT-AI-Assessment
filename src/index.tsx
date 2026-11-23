@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { secureHeaders } from 'hono/secure-headers'
 
-import { SCHEMA_SQL } from './lib/schema'
+import { SCHEMA_SQL, COLUMN_MIGRATIONS } from './lib/schema'
 import {
   ensureSeed,
   questionsFor,
@@ -38,6 +38,7 @@ import { dashboardPage, type DashRow } from './lib/views/dashboard'
 import { clientFormPage, clientDetailPage } from './lib/views/client'
 import { renderFormPage } from './lib/views/form'
 import { renderAnswersPage } from './lib/views/answers'
+import { signupPage, signupDonePage } from './lib/views/signup'
 import { adminShell, publicShell, doc, alertBox, badge } from './lib/views/layout'
 
 const app = new Hono<{ Bindings: Env; Variables: { admin: any } }>()
@@ -53,6 +54,11 @@ async function bootstrap(env: Env) {
         .map((s) => s.trim())
         .filter(Boolean)
       for (const sql of stmts) {
+        await env.DB.prepare(sql).run().catch(() => undefined)
+      }
+      // Additive column upgrades for databases created before they existed.
+      // Duplicated-column errors are expected on an up-to-date schema.
+      for (const sql of COLUMN_MIGRATIONS.split(';').map((s) => s.trim()).filter(Boolean)) {
         await env.DB.prepare(sql).run().catch(() => undefined)
       }
       await ensureSeed(env)
@@ -148,7 +154,10 @@ app.post('/logout', async (c) => {
   })
 })
 
-app.get('/', (c) => c.redirect('/painel'))
+app.get('/', async (c) => {
+  const admin = await getAdminFromRequest(c.env.DB, c.req.raw)
+  return c.redirect(admin ? '/painel' : '/comecar')
+})
 
 /* ── configurações ─────────────────────────────────────────────────────── */
 app.get('/configuracoes', requireAdmin(), async (c) => {
@@ -158,6 +167,7 @@ app.get('/configuracoes', requireAdmin(), async (c) => {
   const fa = await defaultCredsActive(c.env.DB)
   const flashRaw = String(c.req.query('ok') || '')
   const errRaw = String(c.req.query('erro') || '')
+  const base = baseUrl(c)
 
   return c.html(
     settingsPage(s, admin, {
@@ -168,8 +178,35 @@ app.get('/configuracoes', requireAdmin(), async (c) => {
           : null,
       mailConfigured: cfg.configured,
       defaultPasswordActive: fa.active,
+      baseUrl: base,
+      signupSnippet: buildSignupSnippet(base),
     })
   )
+})
+
+/** Embeddable button for the Unified Technologies website. */
+function buildSignupSnippet(base: string): string {
+  return `<!-- AI Maturity Assessment — self-registration button -->
+<a href="${base}/comecar"
+   style="display:inline-block;padding:14px 30px;background:#A8D432;color:#17220a;
+          font-family:Inter,Arial,sans-serif;font-weight:700;font-size:16px;
+          text-decoration:none;border-radius:9px">
+  Start your AI maturity assessment
+</a>`
+}
+
+app.post('/configuracoes/autocadastro', requireAdmin(), async (c) => {
+  const admin = c.get('admin')
+  const body = await c.req.parseBody()
+  const enabled = String(body.self_signup || '1') === '0' ? '0' : '1'
+  const contact = String(body.signup_contact_email || '').trim()
+
+  const db = c.env.DB
+  await setSetting(db, 'self_signup', enabled, admin.email)
+  await setSetting(db, 'signup_contact_email', contact, admin.email)
+  await audit(db, admin.email, 'configuracoes_autocadastro', 'settings', 'self_signup', enabled === '1' ? 'enabled' : 'disabled')
+
+  return c.redirect(`/configuracoes?ok=${encodeURIComponent('Self-registration settings saved.')}#autocadastro`)
 })
 
 app.post('/configuracoes/acesso', requireAdmin(), async (c) => {
@@ -288,9 +325,9 @@ app.get('/painel', requireAdmin(), async (c) => {
   const where: string[] = ['c.ativo = 1']
   const binds: any[] = []
   if (q) {
-    where.push('(lower(c.razao_social) LIKE ? OR lower(c.nome_fantasia) LIKE ? OR lower(c.responsavel_nome) LIKE ? OR lower(c.responsavel_email) LIKE ? OR c.cnpj LIKE ?)')
+    where.push('(lower(c.razao_social) LIKE ? OR lower(c.nome_fantasia) LIKE ? OR lower(c.responsavel_nome) LIKE ? OR lower(c.responsavel_email) LIKE ? OR lower(c.tax_id) LIKE ? OR lower(c.cidade) LIKE ?)')
     const like = `%${q.toLowerCase()}%`
-    binds.push(like, like, like, like, `%${q}%`)
+    binds.push(like, like, like, like, like, like)
   }
   if (vertical) {
     where.push('c.vertical = ?')
@@ -302,7 +339,7 @@ app.get('/painel', requireAdmin(), async (c) => {
   }
 
   const sql = `
-    SELECT c.id AS client_id, c.razao_social, c.nome_fantasia, c.cnpj, c.vertical, c.tamanho_faixa,
+    SELECT c.id AS client_id, c.razao_social, c.nome_fantasia, c.tax_id, c.country, c.vertical, c.tamanho_faixa,
            c.responsavel_nome, c.responsavel_email, c.cidade, c.estado AS estado_uf, c.criado_em, c.ativo,
            a.id AS ass_id, a.estado AS ass_estado, a.link_token, a.expira_em, a.submetido_em, a.reaberto,
            r.indice_geral AS indice, r.id AS report_id, r.versao AS report_versao
@@ -317,7 +354,8 @@ app.get('/painel', requireAdmin(), async (c) => {
     client_id: r.client_id,
     razao_social: r.razao_social,
     nome_fantasia: r.nome_fantasia,
-    cnpj: r.cnpj,
+    tax_id: r.tax_id,
+    country: r.country,
     vertical: r.vertical,
     tamanho_faixa: r.tamanho_faixa,
     responsavel_nome: r.responsavel_nome,
@@ -427,8 +465,8 @@ app.get('/painel/export.xlsx', requireAdmin(), async (c) => {
 async function exportRows(db: D1Database) {
   const { results } = await db
     .prepare(
-      `SELECT c.razao_social, c.nome_fantasia, c.cnpj, c.vertical, c.tamanho_faixa, c.responsavel_nome,
-              c.responsavel_email, c.cidade, c.estado, c.criado_em,
+      `SELECT c.razao_social, c.nome_fantasia, c.tax_id, c.country, c.vertical, c.tamanho_faixa, c.responsavel_nome,
+              c.responsavel_email, c.cidade, c.estado, c.postal_code, c.website, c.criado_em,
               a.estado AS ass_estado, a.submetido_em, r.versao AS rep_versao, r.indice_geral
          FROM clients c
          LEFT JOIN assessments a ON a.id = (SELECT MAX(id) FROM assessments WHERE client_id = c.id)
@@ -438,12 +476,14 @@ async function exportRows(db: D1Database) {
     .all<any>()
 
   const header = [
-    'Legal name', 'Trading name', 'Company registration', 'Industry', 'Company size', 'Contact', 'E-mail',
-    'City', 'State', 'Registered', 'Assessment status', 'Submitted on', 'Report version', 'Index',
+    'Legal name', 'Trading name', 'Tax ID', 'Industry', 'Company size', 'Contact', 'E-mail',
+    'City', 'State / region', 'Country', 'ZIP', 'Registered', 'Assessment status', 'Submitted on',
+    'Report version', 'Index',
   ]
   const body = (results || []).map((r) => [
-    r.razao_social, r.nome_fantasia, r.cnpj, r.vertical, r.tamanho_faixa, r.responsavel_nome, r.responsavel_email,
-    r.cidade, r.estado, r.criado_em, r.ass_estado, r.submetido_em, r.rep_versao, r.indice_geral,
+    r.razao_social, r.nome_fantasia, r.tax_id, r.vertical, r.tamanho_faixa, r.responsavel_nome,
+    r.responsavel_email, r.cidade, r.estado, r.country, r.postal_code, r.criado_em, r.ass_estado,
+    r.submetido_em, r.rep_versao, r.indice_geral,
   ])
   return [header, ...body]
 }
@@ -503,7 +543,7 @@ async function exportSheets(db: D1Database) {
   }
 
   return [
-    { name: 'Clients', rows: clientes, widths: [34, 26, 20, 16, 20, 24, 30, 18, 6, 20, 22, 20, 16, 10] },
+    { name: 'Clients', rows: clientes, widths: [34, 26, 18, 18, 20, 24, 30, 20, 22, 22, 12, 20, 22, 20, 16, 10] },
     { name: 'Responses', rows: respRows, widths: [30, 24, 8, 60, 40] },
     { name: 'Indexes', rows: idxRows, widths: [30, 8, 14, 20, 32, 8, 8, 8, 12] },
     { name: 'Initiatives', rows: iniRows, widths: [30, 8, 34, 40, 40, 10, 24, 12, 40] },
@@ -511,6 +551,108 @@ async function exportSheets(db: D1Database) {
 }
 
 /* ── cadastro de cliente ───────────────────────────────────────────────── */
+type ClientInput = {
+  razao_social: string
+  nome_fantasia: string | null
+  tax_id: string | null
+  country: string | null
+  estado: string | null
+  cidade: string | null
+  postal_code: string | null
+  website: string | null
+  vertical: string | null
+  tamanho_faixa: string | null
+  responsavel_nome: string
+  responsavel_email: string
+}
+
+function clientFromBody(body: Record<string, unknown>): ClientInput {
+  const str = (k: string) => String(body[k] ?? '').trim() || null
+  return {
+    razao_social: String(body.razao_social ?? '').trim(),
+    nome_fantasia: str('nome_fantasia'),
+    tax_id: str('tax_id'),
+    country: str('country'),
+    estado: str('estado'),
+    cidade: str('cidade'),
+    postal_code: str('postal_code'),
+    website: str('website'),
+    vertical: str('vertical'),
+    tamanho_faixa: str('tamanho_faixa'),
+    responsavel_nome: String(body.responsavel_nome ?? '').trim(),
+    responsavel_email: String(body.responsavel_email ?? '').trim(),
+  }
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+/** Validates a client payload; returns an English error message or null. */
+function validateClient(d: ClientInput): string | null {
+  if (!d.razao_social || !d.responsavel_nome || !d.responsavel_email) {
+    return 'Legal name, contact name and contact e-mail are required.'
+  }
+  if (!EMAIL_RE.test(d.responsavel_email)) return 'Invalid contact e-mail address.'
+  return null
+}
+
+/**
+ * Creates the client, its assessment, the unique token and the default
+ * per-dimension targets, then sends the invitation. Shared by the admin
+ * registration route and the public self-signup flow.
+ */
+async function createClientWithAssessment(
+  env: Env,
+  c: any,
+  dados: ClientInput,
+  createdBy: string
+): Promise<{ clientId: number; token: string; link: string; expira: string; mail: { sent: boolean; detail: string } }> {
+  const inserted = await env.DB.prepare(
+    `INSERT INTO clients (razao_social, nome_fantasia, tax_id, country, estado, cidade, postal_code, website,
+                          vertical, tamanho_faixa, responsavel_nome, responsavel_email, criado_por)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(
+      dados.razao_social, dados.nome_fantasia, dados.tax_id, dados.country, dados.estado, dados.cidade,
+      dados.postal_code, dados.website, dados.vertical, dados.tamanho_faixa,
+      dados.responsavel_nome, dados.responsavel_email, createdBy
+    )
+    .run()
+
+  const clientId = Number(inserted.meta.last_row_id)
+  const token = randomToken(24)
+  const ttl = await linkTtlDays(env, env.DB)
+  const expira = addDays(ttl).toISOString()
+
+  await env.DB.prepare(
+    `INSERT INTO assessments (client_id, estado, link_token, expira_em, questionario_versao, criado_por, atualizado_em, atualizado_por)
+     VALUES (?, 'aguardando', ?, ?, 1, ?, ?, ?)`
+  )
+    .bind(clientId, token, expira, createdBy, nowIso(), createdBy)
+    .run()
+
+  const assRow = await env.DB.prepare('SELECT id FROM assessments WHERE link_token = ?').bind(token).first<{ id: number }>()
+  if (assRow) {
+    const stmt = env.DB.prepare('INSERT OR REPLACE INTO dimension_targets (assessment_id, dimensao, meta_nivel) VALUES (?, ?, 2)')
+    for (const d of DIMENSIONS) await stmt.bind(assRow.id, d.key).run()
+  }
+
+  const link = `${baseUrl(c)}/a/${token}`
+  const cfg = await mailConfig(env, env.DB)
+  const mailBody = inviteEmail({
+    empresa: dados.nome_fantasia || dados.razao_social,
+    responsavel: dados.responsavel_nome,
+    link,
+    expiraEm: fmtDate(expira),
+    vertical: dados.vertical,
+    assunto: cfg.subject,
+    intro: cfg.intro,
+  })
+  mailBody.to = dados.responsavel_email
+  const result = await sendMail({ provider: cfg.provider, apiKey: cfg.apiKey, from: cfg.from }, mailBody)
+
+  return { clientId, token, link, expira, mail: { sent: result.sent, detail: result.detail } }
+}
+
 app.get('/clientes/novo', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   return c.html(clientFormPage(admin, {}, { mode: 'novo' }))
@@ -519,75 +661,18 @@ app.get('/clientes/novo', requireAdmin(), async (c) => {
 app.post('/clientes/novo', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const body = await c.req.parseBody()
+  const dados = clientFromBody(body)
 
-  const dados = {
-    razao_social: String(body.razao_social || '').trim(),
-    nome_fantasia: String(body.nome_fantasia || '').trim() || null,
-    cnpj: String(body.cnpj || '').trim() || null,
-    vertical: String(body.vertical || '').trim() || null,
-    tamanho_faixa: String(body.tamanho_faixa || '').trim() || null,
-    responsavel_nome: String(body.responsavel_nome || '').trim(),
-    responsavel_email: String(body.responsavel_email || '').trim(),
-    cidade: String(body.cidade || '').trim() || null,
-    estado_uf: String(body.estado_uf || '').trim() || null,
+  const erro = validateClient(dados)
+  if (erro) {
+    return c.html(clientFormPage(admin, dados, { mode: 'novo', error: erro }), 400)
   }
 
-  if (!dados.razao_social || !dados.responsavel_nome || !dados.responsavel_email) {
-    return c.html(
-      clientFormPage(admin, dados, { mode: 'novo', error: 'Legal name, contact name and contact e-mail are required.' }),
-      400
-    )
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(dados.responsavel_email)) {
-    return c.html(clientFormPage(admin, dados, { mode: 'novo', error: 'Invalid contact e-mail address.' }), 400)
-  }
-
-  const inserted = await c.env.DB.prepare(
-    `INSERT INTO clients (razao_social, nome_fantasia, cnpj, vertical, tamanho_faixa, responsavel_nome,
-                          responsavel_email, cidade, estado, criado_por)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  )
-    .bind(
-      dados.razao_social, dados.nome_fantasia, dados.cnpj, dados.vertical, dados.tamanho_faixa,
-      dados.responsavel_nome, dados.responsavel_email, dados.cidade, dados.estado_uf, admin.email
-    )
-    .run()
-
-  const clientId = Number(inserted.meta.last_row_id)
-  const token = randomToken(24)
-  const ttl = await linkTtlDays(c.env, c.env.DB)
-  const expira = addDays(ttl).toISOString()
-
-  await c.env.DB.prepare(
-    `INSERT INTO assessments (client_id, estado, link_token, expira_em, questionario_versao, criado_por, atualizado_em, atualizado_por)
-     VALUES (?, 'aguardando', ?, ?, 1, ?, ?, ?)`
-  )
-    .bind(clientId, token, expira, admin.email, nowIso(), admin.email)
-    .run()
-
-  // metas default = 2 em todas as dimensões
-  const assRow = await c.env.DB.prepare('SELECT id FROM assessments WHERE link_token = ?').bind(token).first<{ id: number }>()
-  if (assRow) {
-    const stmt = c.env.DB.prepare('INSERT OR REPLACE INTO dimension_targets (assessment_id, dimensao, meta_nivel) VALUES (?, ?, 2)')
-    for (const d of DIMENSIONS) await stmt.bind(assRow.id, d.key).run()
-  }
-
-  const link = `${baseUrl(c)}/a/${token}`
-  const cfg = await mailConfig(c.env, c.env.DB)
-  const mailBody = inviteEmail({
-    empresa: dados.nome_fantasia || dados.razao_social,
-    responsavel: dados.responsavel_nome,
-    link,
-    expiraEm: fmtDate(expira),
-    assunto: cfg.subject,
-    intro: cfg.intro,
-  })
-  mailBody.to = dados.responsavel_email
-  const result = await sendMail({ provider: cfg.provider, apiKey: cfg.apiKey, from: cfg.from }, mailBody)
+  const { clientId, link, expira, mail } = await createClientWithAssessment(c.env, c, dados, admin.email)
 
   await audit(
     c.env.DB, admin.email, 'cliente_criado', 'clients', clientId,
-    `assessment token created · e-mail ${result.sent ? 'sent' : 'not sent (' + result.detail + ')'}`
+    `assessment token created · e-mail ${mail.sent ? 'sent' : 'not sent (' + mail.detail + ')'}`
   )
 
   return c.html(
@@ -595,9 +680,9 @@ app.post('/clientes/novo', requireAdmin(), async (c) => {
       mode: 'novo',
       link,
       expiraEm: expira,
-      mailNote: result.sent
+      mailNote: mail.sent
         ? `Invitation sent to <strong>${esc(dados.responsavel_email)}</strong>. The link is also available to copy below.`
-        : `Automatic delivery unavailable (${esc(result.detail)}). Copy the link and send it manually to <strong>${esc(
+        : `Automatic delivery unavailable (${esc(mail.detail)}). Copy the link and send it manually to <strong>${esc(
             dados.responsavel_email
           )}</strong>.`,
     })
@@ -661,41 +746,30 @@ app.get('/clientes/:id/editar', requireAdmin(), async (c) => {
   const id = Number(c.req.param('id'))
   const client = await c.env.DB.prepare('SELECT * FROM clients WHERE id = ? AND ativo = 1').bind(id).first<any>()
   if (!client) return c.notFound()
-  return c.html(
-    clientFormPage(admin, { ...client, estado_uf: client.estado }, { mode: 'editar' })
-  )
+  return c.html(clientFormPage(admin, client, { mode: 'editar' }))
 })
 
 app.post('/clientes/:id/editar', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const id = Number(c.req.param('id'))
   const body = await c.req.parseBody()
+  const dados = clientFromBody(body)
 
-  const dados = {
-    id,
-    razao_social: String(body.razao_social || '').trim(),
-    nome_fantasia: String(body.nome_fantasia || '').trim() || null,
-    cnpj: String(body.cnpj || '').trim() || null,
-    vertical: String(body.vertical || '').trim() || null,
-    tamanho_faixa: String(body.tamanho_faixa || '').trim() || null,
-    responsavel_nome: String(body.responsavel_nome || '').trim(),
-    responsavel_email: String(body.responsavel_email || '').trim(),
-    cidade: String(body.cidade || '').trim() || null,
-    estado_uf: String(body.estado_uf || '').trim() || null,
-  }
-
-  if (!dados.razao_social || !dados.responsavel_nome || !dados.responsavel_email) {
-    return c.html(clientFormPage(admin, dados, { mode: 'editar', error: 'Legal name, contact name and contact e-mail are required.' }), 400)
+  const erro = validateClient(dados)
+  if (erro) {
+    return c.html(clientFormPage(admin, { ...dados, id }, { mode: 'editar', error: erro }), 400)
   }
 
   await c.env.DB.prepare(
-    `UPDATE clients SET razao_social = ?, nome_fantasia = ?, cnpj = ?, vertical = ?, tamanho_faixa = ?,
-            responsavel_nome = ?, responsavel_email = ?, cidade = ?, estado = ?, atualizado_em = ?, atualizado_por = ?
+    `UPDATE clients SET razao_social = ?, nome_fantasia = ?, tax_id = ?, country = ?, estado = ?,
+            cidade = ?, postal_code = ?, website = ?, vertical = ?, tamanho_faixa = ?,
+            responsavel_nome = ?, responsavel_email = ?, atualizado_em = ?, atualizado_por = ?
       WHERE id = ?`
   )
     .bind(
-      dados.razao_social, dados.nome_fantasia, dados.cnpj, dados.vertical, dados.tamanho_faixa,
-      dados.responsavel_nome, dados.responsavel_email, dados.cidade, dados.estado_uf, nowIso(), admin.email, id
+      dados.razao_social, dados.nome_fantasia, dados.tax_id, dados.country, dados.estado,
+      dados.cidade, dados.postal_code, dados.website, dados.vertical, dados.tamanho_faixa,
+      dados.responsavel_nome, dados.responsavel_email, nowIso(), admin.email, id
     )
     .run()
 
@@ -823,13 +897,14 @@ async function renderAdminReport(c: any, admin: any, clientId: number, vParam?: 
       client: {
         razao_social: client.razao_social,
         nome_fantasia: client.nome_fantasia,
-        cnpj: client.cnpj,
+        tax_id: client.tax_id,
         vertical: client.vertical,
         tamanho_faixa: client.tamanho_faixa,
         responsavel_nome: client.responsavel_nome,
         responsavel_email: client.responsavel_email,
         cidade: client.cidade,
         estado_uf: client.estado,
+        country: client.country,
       },
       assessment: { id: assessment.id, versao: chosen.versao, submetido_em: assessment.submetido_em, criado_em: assessment.criado_em },
       questions: [],
@@ -1278,6 +1353,93 @@ async function renderClientReport(c: any, token: string, vParam?: string, print 
   return c.html(publicShell(`Report · ${a.client.nome_fantasia || a.client.razao_social}`, actions + html))
 }
 
+/* ── public self-registration ───────────────────────────────────────────── */
+async function signupConfig(env: Env): Promise<{ enabled: boolean; contactEmail: string }> {
+  const s = await getSettings(env.DB)
+  return { enabled: (s.self_signup ?? '1') !== '0', contactEmail: s.signup_contact_email || '' }
+}
+
+app.get('/comecar', async (c) => {
+  const { enabled, contactEmail } = await signupConfig(c.env)
+  return c.html(signupPage({ closed: !enabled, contactEmail }))
+})
+
+app.post('/comecar', async (c) => {
+  const { enabled, contactEmail } = await signupConfig(c.env)
+  if (!enabled) return c.html(signupPage({ closed: true, contactEmail }), 403)
+
+  const body = await c.req.parseBody()
+  const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
+
+  // Honeypot: bots fill hidden fields, humans never see them.
+  if (String(body.empresa_aux || '').trim()) {
+    await audit(c.env.DB, 'self-signup', 'autocadastro_bloqueado', 'signup_log', null, `honeypot · ip ${ip}`)
+    return c.html(signupPage({ error: 'We could not process this submission. Please try again.' }), 400)
+  }
+
+  const dados = clientFromBody(body)
+  const erro = validateClient(dados)
+  if (erro) return c.html(signupPage({ data: dados, error: erro }), 400)
+  if (!body.consent) {
+    return c.html(
+      signupPage({ data: dados, error: 'Please accept the consent notice so we can send you the assessment link.' }),
+      400
+    )
+  }
+
+  // Rate limit: at most 5 self-registrations per IP per hour.
+  const recent = await c.env.DB.prepare(
+    "SELECT COUNT(*) AS n FROM signup_log WHERE ip = ? AND criado_em > datetime('now','-1 hour')"
+  )
+    .bind(ip)
+    .first<{ n: number }>()
+  if (Number(recent?.n || 0) >= 5) {
+    await audit(c.env.DB, 'self-signup', 'autocadastro_bloqueado', 'signup_log', null, `rate limit · ip ${ip}`)
+    return c.html(
+      signupPage({ data: dados, error: 'Too many registrations from this network. Please try again in an hour.' }),
+      429
+    )
+  }
+
+  // One assessment per contact e-mail — avoids duplicate client records.
+  const dup = await c.env.DB.prepare(
+    'SELECT id FROM clients WHERE ativo = 1 AND lower(responsavel_email) = ? LIMIT 1'
+  )
+    .bind(dados.responsavel_email.toLowerCase())
+    .first<{ id: number }>()
+  if (dup) {
+    return c.html(
+      signupPage({
+        data: dados,
+        error:
+          'An assessment is already registered for this e-mail. Use the link you received, or contact us and we will send a new one.',
+      }),
+      409
+    )
+  }
+
+  const { clientId, link, expira, mail } = await createClientWithAssessment(c.env, c, dados, 'self-signup')
+
+  await c.env.DB.prepare('INSERT INTO signup_log (ip, email, client_id) VALUES (?, ?, ?)')
+    .bind(ip, dados.responsavel_email, clientId)
+    .run()
+  await audit(
+    c.env.DB, 'self-signup', 'cliente_autocadastro', 'clients', clientId,
+    `ip ${ip} · e-mail ${mail.sent ? 'sent' : 'not sent (' + mail.detail + ')'}`
+  )
+
+  return c.html(
+    signupDonePage({
+      empresa: dados.nome_fantasia || dados.razao_social,
+      email: dados.responsavel_email,
+      link,
+      expiraEm: fmtDate(expira),
+      sent: mail.sent,
+      detail: mail.detail,
+    })
+  )
+})
+
 /* ── páginas de erro ───────────────────────────────────────────────────── */
 function notFoundPage(c: any, title: string, message: string) {
   return c.html(
@@ -1305,7 +1467,7 @@ function expiredPage(c: any, empresa: string, expira: string | null) {
         <p class="muted">The assessment link for <strong>${esc(empresa)}</strong> ${expira ? `expired on ${esc(fmtDate(expira))}` : 'is no longer valid'}.
         Please request a new link from your Unified Technologies consultant — your previous answers are preserved.</p>
       </div>`,
-      { backHref: '/', backLabel: 'Início' }
+      { backHref: '/', backLabel: 'Back' }
     ),
     410
   )

@@ -3,46 +3,28 @@ import { esc, fmtDate, fmtDateTime, estadoLabel, estadoTone, formatIndex, priori
 import { adminShell, badge, alertBox, levelChip } from './layout'
 import type { QRow, ScoreRow } from '../scoring'
 import { isAnswered, levelOf } from '../scoring'
+import { COUNTRY_NAMES, DEFAULT_COUNTRY, REGION_SUGGESTIONS, CLIENT_VERTICALS, CLIENT_SIZES } from '../geo'
 
-const VERTICAIS = [
-  'Healthcare',
-  'Financial services',
-  'Retail',
-  'Manufacturing',
-  'Technology',
-  'Education',
-  'Logistics',
-  'Energy',
-  'Services',
-  'Public sector',
-  'Other',
-]
-
-const PORTES = [
-  '1 to 50 employees',
-  '51 to 200 employees',
-  '201 to 500 employees',
-  '501 to 1,000 employees',
-  '1,001 to 5,000 employees',
-  'More than 5,000 employees',
-]
-
-const UFS = [
-  'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO',
-]
+export const VERTICAIS = CLIENT_VERTICALS
+export const PORTES = CLIENT_SIZES
 
 export type ClientFormData = {
   id?: number
   razao_social?: string | null
   nome_fantasia?: string | null
-  cnpj?: string | null
+  tax_id?: string | null
+  country?: string | null
+  estado?: string | null
+  cidade?: string | null
+  postal_code?: string | null
+  website?: string | null
   vertical?: string | null
   tamanho_faixa?: string | null
   responsavel_nome?: string | null
   responsavel_email?: string | null
-  cidade?: string | null
-  estado_uf?: string | null
 }
+
+const REGION_OPTIONS = REGION_SUGGESTIONS.map((r) => `<option value="${esc(r)}"></option>`).join('')
 
 export function clientFormPage(
   admin: { nome: string; email: string },
@@ -51,6 +33,7 @@ export function clientFormPage(
 ): string {
   const v = data
   const action = opts.mode === 'novo' ? '/clientes/novo' : `/clientes/${v.id}/editar`
+  const country = v.country || DEFAULT_COUNTRY
 
   const form = `<form method="post" action="${action}" class="card" novalidate>
     <div class="card-head"><div>
@@ -66,19 +49,17 @@ export function clientFormPage(
         <input type="text" id="razao_social" name="razao_social" value="${esc(v.razao_social || '')}" required maxlength="180">
       </div>
       <div class="field">
-        <label for="nome_fantasia">Trading name</label>
+        <label for="nome_fantasia">Trading name (DBA)</label>
         <input type="text" id="nome_fantasia" name="nome_fantasia" value="${esc(v.nome_fantasia || '')}" maxlength="120">
       </div>
       <div class="field">
-        <label for="cnpj">Company registration (CNPJ)</label>
-        <input type="text" id="cnpj" name="cnpj" value="${esc(v.cnpj || '')}" placeholder="00.000.000/0000-00" maxlength="20">
+        <label for="tax_id">Tax ID (EIN / registration)</label>
+        <input type="text" id="tax_id" name="tax_id" value="${esc(v.tax_id || '')}" placeholder="12-3456789" maxlength="30">
+        <span class="hint">Optional. US EIN, or the local company registration number.</span>
       </div>
       <div class="field">
-        <label for="tamanho_faixa">Company size (employees)</label>
-        <select id="tamanho_faixa" name="tamanho_faixa">
-          <option value="">Select…</option>
-          ${PORTES.map((p) => `<option value="${esc(p)}" ${v.tamanho_faixa === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
-        </select>
+        <label for="website">Website</label>
+        <input type="text" id="website" name="website" value="${esc(v.website || '')}" placeholder="https://" maxlength="160">
       </div>
       <div class="field">
         <label for="vertical">Industry / vertical</label>
@@ -89,15 +70,36 @@ export function clientFormPage(
         <span class="hint">Defines the suggested initiatives when the client does not declare any.</span>
       </div>
       <div class="field">
+        <label for="tamanho_faixa">Company size (employees)</label>
+        <select id="tamanho_faixa" name="tamanho_faixa">
+          <option value="">Select…</option>
+          ${PORTES.map((p) => `<option value="${esc(p)}" ${v.tamanho_faixa === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <h3 style="margin-bottom:12px">Location</h3>
+    <div class="grid-3">
+      <div class="field">
+        <label for="country">Country / territory</label>
+        <select id="country" name="country">
+          ${COUNTRY_NAMES.map((n) => `<option value="${esc(n)}" ${country === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label for="estado">State / region</label>
+        <input type="text" id="estado" name="estado" value="${esc(v.estado || '')}" list="region-list" maxlength="60" placeholder="Florida (FL)">
+        <datalist id="region-list">${REGION_OPTIONS}</datalist>
+        <span class="hint">Pick from the list or type any region.</span>
+      </div>
+      <div class="field">
         <label for="cidade">City</label>
         <input type="text" id="cidade" name="cidade" value="${esc(v.cidade || '')}" maxlength="90">
       </div>
       <div class="field">
-        <label for="estado_uf">State</label>
-        <select id="estado_uf" name="estado_uf">
-          <option value="">Select…</option>
-          ${UFS.map((u) => `<option value="${u}" ${v.estado_uf === u ? 'selected' : ''}>${u}</option>`).join('')}
-        </select>
+        <label for="postal_code">ZIP / postal code</label>
+        <input type="text" id="postal_code" name="postal_code" value="${esc(v.postal_code || '')}" maxlength="20">
       </div>
     </div>
 
@@ -185,6 +187,7 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
   const nome = c.nome_fantasia || c.razao_social
   const link = a ? `${d.baseUrl}/a/${a.link_token}` : ''
   const ultimo = d.reports.length ? d.reports[d.reports.length - 1] : null
+  const location = [c.cidade, c.estado, c.country].filter(Boolean).join(' · ')
 
   const infoCard = `<section class="card" style="margin-bottom:18px">
     <div class="card-head">
@@ -198,12 +201,14 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
       </div>
     </div>
     <div class="grid-3 small">
-      <div><strong>Company registration</strong><div class="muted">${esc(c.cnpj || '—')}</div></div>
+      <div><strong>Tax ID</strong><div class="muted">${esc(c.tax_id || '—')}</div></div>
       <div><strong>Contact</strong><div class="muted">${esc(c.responsavel_nome)}</div><div class="muted">${esc(c.responsavel_email)}</div></div>
-      <div><strong>Location</strong><div class="muted">${esc([c.cidade, c.estado].filter(Boolean).join(' / ') || '—')}</div></div>
+      <div><strong>Location</strong><div class="muted">${esc(location || '—')}${c.postal_code ? ` · ${esc(c.postal_code)}` : ''}</div></div>
+      <div><strong>Website</strong><div class="muted">${
+        c.website ? `<a href="${esc(/^https?:\/\//i.test(c.website) ? c.website : 'https://' + c.website)}" target="_blank" rel="noopener">${esc(c.website)}</a>` : '—'
+      }</div></div>
       <div><strong>Registered on</strong><div class="muted">${esc(fmtDate(c.criado_em))}</div></div>
       <div><strong>Submitted on</strong><div class="muted">${esc(a?.submetido_em ? fmtDateTime(a.submetido_em) : '—')}</div></div>
-      <div><strong>Questionnaire version</strong><div class="muted">v${esc(a?.questionario_versao || 1)}</div></div>
     </div>
     <div class="divider"></div>
     ${
@@ -392,5 +397,5 @@ function answerLabel(q: QRow, val: unknown): string {
     if (!arr.length) return '—'
     return arr.map((i) => q.opcoes?.[i]?.label).filter(Boolean).join(' · ')
   }
-  return String((val as any)?.t ?? val ?? '—')
+  return String((val as any)?.t ?? val ?? '')
 }
