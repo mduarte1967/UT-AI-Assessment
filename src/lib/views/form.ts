@@ -165,7 +165,7 @@ export function renderFormPage(ctx: FormContext): string {
       ${pendingHtml(ctx.questions, ctx.respostas)}
     </div>
     <div class="alert info"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><div>
-      Ao submeter, o relatório é gerado automaticamente com índice de maturidade, scorecard das 7 dimensões, radar atual × meta,
+      Ao submeter, o relatório é gerado automaticamente com índice de maturidade, quadro de resultados das 7 dimensões, radar atual × meta,
       iniciativas priorizadas e plano de 90 dias. Alterações posteriores exigem reabertura pelo consultor da Unified.
     </div></div>
     <button class="btn btn-accent" type="button" id="btn-submit" style="height:44px;padding:0 22px">

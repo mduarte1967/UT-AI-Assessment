@@ -29,9 +29,10 @@ ${body.join('\n')}
 }
 
 const NAV = [
-  { href: '/', icon: 'fa-gauge-high', label: 'Painel' },
-  { href: '/clientes', icon: 'fa-building-columns', label: 'Clientes' },
+  { href: '/painel', icon: 'fa-gauge-high', label: 'Painel' },
   { href: '/clientes/novo', icon: 'fa-user-plus', label: 'Novo cliente' },
+  { href: '/ajuda', icon: 'fa-circle-question', label: 'Como usar' },
+  { href: '/configuracoes', icon: 'fa-gear', label: 'Configurações' },
 ]
 
 export type AdminShellOptions = {

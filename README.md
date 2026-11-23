@@ -14,8 +14,28 @@ Stack: **Hono + Cloudflare Workers/Pages + D1**, sem dependências nativas (PDF 
 
 - **Administrador** (único perfil autenticado — conforme definido): `/login`
   - E-mail: `admin@unifiedtech.com`
-  - Senha: `Unified@2026` *(altere via env `ADMIN_EMAIL`/`ADMIN_PASSWORD` antes do primeiro boot em produção)*
+  - Senha: `Unified@2026`
+  - Enquanto a senha padrão não for trocada, a própria tela de login exibe o bloco **"Primeiro acesso"** com essas credenciais.
+  - Não existe tela de cadastro de usuário: o administrador é criado automaticamente no primeiro boot. Para trocar nome/e-mail/senha use **Configurações → Acesso do administrador** (`/configuracoes#acesso`). Também é possível definir `ADMIN_EMAIL`/`ADMIN_PASSWORD` no ambiente antes do primeiro boot em produção.
 - **Cliente**: não faz login. Acessa `/a/<token>` — link único gerado no cadastro, com expiração (padrão 30 dias).
+
+## Como usar (guia)
+
+Há um guia em 5 passos dentro do sistema em **`/ajuda`** (menu "Como usar"):
+
+1. **Entrar como administrador** — `/login` com as credenciais acima.
+2. **Cadastrar o cliente** — em *Novo cliente*, com nome **e e-mail do responsável**. É para esse e-mail que o convite vai.
+3. **Configurar o envio de e-mail** (uma vez) — em *Configurações → Envio de e-mail*: chave de API do Resend (recomendado) ou SendGrid, remetente verificado, assunto, texto e validade do link. O botão *Testar* confirma a entrega.
+4. **O cliente responde pelo link** — sem senha, com autosave; pode fechar e voltar até enviar.
+5. **O relatório é gerado na hora** — índice, quadro das 7 dimensões, radar atual × meta, iniciativas priorizadas e plano de 90 dias; PDF/XLSX disponíveis para o cliente e para o administrador.
+
+### Como o e-mail do cliente é criado
+
+O cliente **não tem conta de e-mail no sistema**. O "e-mail do cliente" é o *convite* enviado ao e-mail do responsável:
+
+- Se a chave de API estiver configurada em `/configuracoes#email`, o convite é disparado automaticamente no cadastro (e no *Reenviar link*).
+- Sem chave configurada, o link aparece na tela após o cadastro e na ficha do cliente, com botão **Copiar** — nesse caso você envia do seu e-mail corporativo.
+- O assunto e o corpo do convite são editáveis em Configurações, com as variáveis `{{empresa}}`, `{{responsavel}}`, `{{link}}` e `{{expira}}`.
 
 ## Identidade visual
 
@@ -57,6 +77,11 @@ logo oficial em `public/static/logo.png`, tipografia Inter. Layout de relatório
 | Rota | Método | Perfil | Função |
 |---|---|---|---|
 | `/login`, `/logout` | GET/POST | Admin | Autenticação (sessão HttpOnly, 12 h) |
+| `/ajuda` | GET | Admin | Guia "Como usar" em 5 passos + FAQ |
+| `/configuracoes` | GET | Admin | Acesso do administrador + envio de e-mail + teste |
+| `/configuracoes/acesso` | POST | Admin | Troca de nome/e-mail/senha (exige senha atual) |
+| `/configuracoes/email` | POST | Admin | Provedor, chave de API, remetente, assunto, texto, validade do link |
+| `/configuracoes/testar` | POST | Admin | Envia e-mail de teste com a configuração salva |
 | `/painel` | GET | Admin | Dashboard, KPIs, filtros |
 | `/painel/export.csv` · `.xlsx` | GET | Admin | Base completa (clientes, respostas, índices, iniciativas) |
 | `/clientes/novo` | GET/POST | Admin | Cadastro + geração de link + e-mail |

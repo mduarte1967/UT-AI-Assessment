@@ -241,7 +241,7 @@ export function scorecardTable(rows: ScoreRow[], opts: { admin?: boolean } = {})
   <table class="scorecard">
     <thead><tr>
       <th>Dimensão</th><th>Progresso (atual × meta)</th>
-      <th class="num">Atual</th><th class="num">Meta 12m</th><th class="num">Gap</th><th>Prioridade</th>
+      <th class="num">Atual</th><th class="num">Meta 12m</th><th class="num">Lacuna</th><th>Prioridade</th>
     </tr></thead>
     <tbody>${body}</tbody>
   </table>
@@ -314,7 +314,7 @@ export function renderReport(r: ReportRender): string {
           <div><div class="rp-score-head">Forças</div><div class="small">${data.destaques.forcas
             .map((d) => `${esc(d.short)} (L${d.atual})`)
             .join(' · ')}</div></div>
-          <div><div class="rp-score-head">Maiores gaps</div><div class="small">${data.destaques.gaps
+          <div><div class="rp-score-head">Maiores lacunas</div><div class="small">${data.destaques.gaps
             .map((d) => `${esc(d.short)} (+${d.gap})`)
             .join(' · ')}</div></div>
         </div>
@@ -324,8 +324,8 @@ export function renderReport(r: ReportRender): string {
 
   const scorecard = `<section class="card" id="scorecard" style="margin-bottom:18px">
     <div class="card-head"><div>
-      <h2>Scorecard das 7 dimensões</h2>
-      <div class="sub">Nível atual, meta declarada para 12 meses, gap e prioridade</div>
+      <h2>Quadro de resultados das 7 dimensões</h2>
+      <div class="sub">Nível atual, meta declarada para 12 meses, lacuna e prioridade</div>
     </div></div>
     ${scorecardTable(data.scorecard)}
     <div class="divider"></div>

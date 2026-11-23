@@ -17,6 +17,7 @@ import {
 import {
   getAdminFromRequest,
   verifyPassword,
+  hashPassword,
   createSession,
   destroySession,
   sessionCookie,
@@ -26,10 +27,13 @@ import { DIMENSIONS } from './lib/questions'
 import { computeScorecard, computeIndex, isAnswered, type QRow } from './lib/scoring'
 import { buildReportData, renderReport, type ReportData } from './lib/report'
 import { buildXlsx, buildCsv } from './lib/xlsx'
-import { sendMail, inviteEmail } from './lib/mailer'
+import { sendMail, inviteEmail, testEmail } from './lib/mailer'
+import { getSettings, setSetting, mailConfig, linkTtlDays, defaultCredsActive } from './lib/settings'
 import { addDays, esc, formatIndex, num, randomToken, nowIso, fmtDate } from './lib/util'
 
 import { loginPage } from './lib/views/login'
+import { settingsPage } from './lib/views/settings'
+import { helpPage } from './lib/views/help'
 import { dashboardPage, type DashRow } from './lib/views/dashboard'
 import { clientFormPage, clientDetailPage } from './lib/views/client'
 import { renderFormPage } from './lib/views/form'
@@ -93,7 +97,14 @@ async function latestReport(db: D1Database, assessmentId: number | null) {
 app.get('/login', async (c) => {
   const admin = await getAdminFromRequest(c.env.DB, c.req.raw)
   if (admin) return c.redirect('/painel')
-  return c.html(loginPage())
+
+  const fa = await defaultCredsActive(c.env.DB)
+  return c.html(
+    loginPage({
+      firstAccess: fa.active && fa.email ? { email: fa.email, senha: c.env.ADMIN_PASSWORD || 'Unified@2026' } : null,
+      notice: String(c.req.query('ok') || ''),
+    })
+  )
 })
 
 app.post('/login', async (c) => {
@@ -107,7 +118,15 @@ app.post('/login', async (c) => {
 
   if (!admin || !(await verifyPassword(senha, admin.senha_hash))) {
     await audit(c.env.DB, email || 'desconhecido', 'login_falha', 'admin_users', admin?.id ?? null, 'credenciais inválidas')
-    return c.html(loginPage('E-mail ou senha incorretos.', email), 401)
+    const fa = await defaultCredsActive(c.env.DB)
+    return c.html(
+      loginPage({
+        error: 'E-mail ou senha incorretos.',
+        email,
+        firstAccess: fa.active && fa.email ? { email: fa.email, senha: c.env.ADMIN_PASSWORD || 'Unified@2026' } : null,
+      }),
+      401
+    )
   }
 
   const token = await createSession(c.env.DB, admin.id)
@@ -130,6 +149,134 @@ app.post('/logout', async (c) => {
 })
 
 app.get('/', (c) => c.redirect('/painel'))
+
+/* ── configurações ─────────────────────────────────────────────────────── */
+app.get('/configuracoes', requireAdmin(), async (c) => {
+  const admin = c.get('admin')
+  const s = await getSettings(c.env.DB)
+  const cfg = await mailConfig(c.env, c.env.DB)
+  const fa = await defaultCredsActive(c.env.DB)
+  const flashRaw = String(c.req.query('ok') || '')
+  const errRaw = String(c.req.query('erro') || '')
+
+  return c.html(
+    settingsPage(s, admin, {
+      flash: errRaw
+        ? { kind: 'danger', text: errRaw }
+        : flashRaw
+          ? { kind: 'ok', text: flashRaw }
+          : null,
+      mailConfigured: cfg.configured,
+      defaultPasswordActive: fa.active,
+    })
+  )
+})
+
+app.post('/configuracoes/acesso', requireAdmin(), async (c) => {
+  const admin = c.get('admin')
+  const body = await c.req.parseBody()
+  const nome = String(body.nome || '').trim()
+  const email = String(body.email || '').trim().toLowerCase()
+  const senhaAtual = String(body.senha_atual || '')
+  const senhaNova = String(body.senha_nova || '')
+  const senhaConf = String(body.senha_conf || '')
+
+  const ok = (msg: string) => c.redirect(`/configuracoes?ok=${encodeURIComponent(msg)}#acesso`)
+  const fail = (msg: string) => c.redirect(`/configuracoes?erro=${encodeURIComponent(msg)}#acesso`)
+
+  if (!nome || !email) return fail('Nome e e-mail são obrigatórios.')
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return fail('E-mail inválido.')
+
+  const row = await c.env.DB.prepare('SELECT * FROM admin_users WHERE id = ?').bind(admin.id).first<any>()
+  if (!row || !(await verifyPassword(senhaAtual, row.senha_hash))) {
+    return fail('Senha atual incorreta — nenhuma alteração foi salva.')
+  }
+
+  if (senhaNova || senhaConf) {
+    if (senhaNova.length < 8) return fail('A nova senha precisa ter ao menos 8 caracteres.')
+    if (senhaNova !== senhaConf) return fail('A confirmação não confere com a nova senha.')
+    const novoHash = await hashPassword(senhaNova)
+    await c.env.DB.prepare('UPDATE admin_users SET nome = ?, email = ?, senha_hash = ? WHERE id = ?')
+      .bind(nome, email, novoHash, admin.id)
+      .run()
+    await setSetting(c.env.DB, 'admin_password_changed', '1', email)
+    await audit(c.env.DB, email, 'senha_alterada', 'admin_users', admin.id, 'senha do administrador atualizada')
+    return ok('Acesso atualizado: nome, e-mail e senha salvos.')
+  }
+
+  await c.env.DB.prepare('UPDATE admin_users SET nome = ?, email = ? WHERE id = ?')
+    .bind(nome, email, admin.id)
+    .run()
+  await audit(c.env.DB, email, 'admin_atualizado', 'admin_users', admin.id)
+  return ok('Dados do administrador atualizados.')
+})
+
+app.post('/configuracoes/email', requireAdmin(), async (c) => {
+  const admin = c.get('admin')
+  const body = await c.req.parseBody()
+  const provider = String(body.mail_provider || 'resend')
+  const key = String(body.mail_api_key || '').trim()
+  const from = String(body.mail_from || '').trim()
+  const subject = String(body.mail_subject || '').trim()
+  const intro = String(body.mail_intro || '').trim()
+  const ttl = String(body.link_ttl_days || '30')
+
+  const db = c.env.DB
+  await setSetting(db, 'mail_provider', provider === 'sendgrid' ? 'sendgrid' : 'resend', admin.email)
+  if (key) await setSetting(db, 'mail_api_key', key, admin.email)
+  if (from) await setSetting(db, 'mail_from', from, admin.email)
+  if (subject) await setSetting(db, 'mail_subject', subject, admin.email)
+  if (intro) await setSetting(db, 'mail_intro', intro, admin.email)
+  const ttlNum = Number(ttl)
+  if (Number.isFinite(ttlNum) && ttlNum >= 1) {
+    await setSetting(db, 'link_ttl_days', String(Math.min(365, Math.round(ttlNum))), admin.email)
+  }
+
+  await audit(db, admin.email, 'configuracoes_email', 'settings', 'mail', `provedor ${provider}${key ? ' · chave atualizada' : ''}`)
+  return c.redirect(`/configuracoes?ok=${encodeURIComponent('Configurações de e-mail salvas.')}#email`)
+})
+
+app.post('/configuracoes/testar', requireAdmin(), async (c) => {
+  const admin = c.get('admin')
+  const body = await c.req.parseBody()
+  const destino = String(body.teste_email || '').trim()
+  if (!destino) return c.redirect(`/configuracoes?erro=${encodeURIComponent('Informe um e-mail de destino.')}#email`)
+
+  const cfg = await mailConfig(c.env, c.env.DB)
+  if (!cfg.configured) {
+    return c.redirect(
+      `/configuracoes?erro=${encodeURIComponent('Nenhuma chave de API salva — preencha e salve antes de testar.')}#email`
+    )
+  }
+
+  const result = await sendMail({ provider: cfg.provider, apiKey: cfg.apiKey, from: cfg.from }, testEmail(destino))
+  await audit(c.env.DB, admin.email, 'email_teste', 'settings', 'mail', `${destino} · ${result.sent ? 'enviado' : result.detail}`)
+
+  return c.redirect(
+    result.sent
+      ? `/configuracoes?ok=${encodeURIComponent(`E-mail de teste enviado para ${destino}.`)}#email`
+      : `/configuracoes?erro=${encodeURIComponent(`Falha no envio: ${result.detail}`)}#email`
+  )
+})
+
+/* ── guia de uso ───────────────────────────────────────────────────────── */
+app.get('/ajuda', requireAdmin(), async (c) => {
+  const admin = c.get('admin')
+  const cfg = await mailConfig(c.env, c.env.DB)
+  const amostra = await c.env.DB.prepare(
+    'SELECT link_token FROM assessments a JOIN clients cl ON cl.id = a.client_id AND cl.ativo = 1 ORDER BY a.id DESC LIMIT 1'
+  ).first<{ link_token: string }>()
+
+  return c.html(
+    helpPage({
+      admin,
+      mailConfigured: cfg.configured,
+      ttlDays: cfg.ttlDays,
+      demoToken: amostra?.link_token ?? null,
+      baseUrl: baseUrl(c),
+    })
+  )
+})
 
 /* ── dashboard ─────────────────────────────────────────────────────────── */
 app.get('/painel', requireAdmin(), async (c) => {
@@ -408,7 +555,7 @@ app.post('/clientes/novo', requireAdmin(), async (c) => {
 
   const clientId = Number(inserted.meta.last_row_id)
   const token = randomToken(24)
-  const ttl = num(c.env.LINK_TTL_DAYS, 30)
+  const ttl = await linkTtlDays(c.env, c.env.DB)
   const expira = addDays(ttl).toISOString()
 
   await c.env.DB.prepare(
@@ -426,14 +573,17 @@ app.post('/clientes/novo', requireAdmin(), async (c) => {
   }
 
   const link = `${baseUrl(c)}/a/${token}`
-  const mail = inviteEmail({
+  const cfg = await mailConfig(c.env, c.env.DB)
+  const mailBody = inviteEmail({
     empresa: dados.nome_fantasia || dados.razao_social,
     responsavel: dados.responsavel_nome,
     link,
     expiraEm: fmtDate(expira),
+    assunto: cfg.subject,
+    intro: cfg.intro,
   })
-  mail.to = dados.responsavel_email
-  const result = await sendMail(c.env, mail)
+  mailBody.to = dados.responsavel_email
+  const result = await sendMail({ provider: cfg.provider, apiKey: cfg.apiKey, from: cfg.from }, mailBody)
 
   await audit(
     c.env.DB, admin.email, 'cliente_criado', 'clients', clientId,
@@ -564,7 +714,7 @@ app.post('/clientes/:id/reenviar', requireAdmin(), async (c) => {
   if (!assessment) return c.notFound()
 
   const token = randomToken(24)
-  const expira = addDays(num(c.env.LINK_TTL_DAYS, 30)).toISOString()
+  const expira = addDays(await linkTtlDays(c.env, c.env.DB)).toISOString()
   await c.env.DB.prepare(
     'UPDATE assessments SET link_token = ?, expira_em = ?, atualizado_em = ?, atualizado_por = ? WHERE id = ?'
   )
@@ -572,15 +722,18 @@ app.post('/clientes/:id/reenviar', requireAdmin(), async (c) => {
     .run()
 
   const link = `${baseUrl(c)}/a/${token}`
-  const mail = inviteEmail({
+  const cfg = await mailConfig(c.env, c.env.DB)
+  const mailBody = inviteEmail({
     empresa: client.nome_fantasia || client.razao_social,
     responsavel: client.responsavel_nome,
     link,
     expiraEm: fmtDate(expira),
     reenvio: true,
+    assunto: cfg.subject,
+    intro: cfg.intro,
   })
-  mail.to = client.responsavel_email
-  const result = await sendMail(c.env, mail)
+  mailBody.to = client.responsavel_email
+  const result = await sendMail({ provider: cfg.provider, apiKey: cfg.apiKey, from: cfg.from }, mailBody)
 
   await audit(
     c.env.DB, admin.email, 'link_reenviado', 'assessments', assessment.id,

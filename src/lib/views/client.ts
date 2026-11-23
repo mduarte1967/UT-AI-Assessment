@@ -272,9 +272,9 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
 
   const scorecardCard = d.scorecard
     ? `<section class="card" style="margin-bottom:18px">
-        <div class="card-head"><div><h2>Scorecard (última versão)</h2><div class="sub">Nível atual, meta, gap e prioridade por dimensão</div></div></div>
+        <div class="card-head"><div><h2>Resultado por dimensão (última versão)</h2><div class="sub">Nível atual, meta, lacuna e prioridade por dimensão</div></div></div>
         <div class="table-wrap" style="border:0"><table class="scorecard">
-          <thead><tr><th>Dimensão</th><th class="num">Atual</th><th class="num">Meta</th><th class="num">Gap</th><th>Prioridade</th><th>Evidência</th></tr></thead>
+          <thead><tr><th>Dimensão</th><th class="num">Atual</th><th class="num">Meta</th><th class="num">Lacuna</th><th>Prioridade</th><th>Evidência</th></tr></thead>
           <tbody>${d.scorecard
             .map(
               (r) => `<tr>

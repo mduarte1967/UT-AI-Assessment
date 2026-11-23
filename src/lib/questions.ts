@@ -22,7 +22,7 @@ export type Dimension = {
 export const DIMENSIONS: Dimension[] = [
   {
     key: 'strategy',
-    nome: 'Strategy & Leadership',
+    nome: 'Estratégia e Liderança',
     short: 'Estratégia',
     descricao: 'Direção, patrocínio executivo e governança da agenda de IA.',
     cor: '#080048',
@@ -30,7 +30,7 @@ export const DIMENSIONS: Dimension[] = [
   },
   {
     key: 'usecases',
-    nome: 'Use Cases & Value',
+    nome: 'Casos de Uso e Valor',
     short: 'Casos de uso',
     descricao: 'Portfólio priorizado de casos de uso e valor comprovado.',
     cor: '#1f4fa8',
@@ -38,7 +38,7 @@ export const DIMENSIONS: Dimension[] = [
   },
   {
     key: 'data',
-    nome: 'Data & Knowledge',
+    nome: 'Dados e Conhecimento',
     short: 'Dados',
     descricao: 'Qualidade, governança e disponibilidade de dados e conhecimento.',
     cor: '#2f6fb5',
@@ -46,7 +46,7 @@ export const DIMENSIONS: Dimension[] = [
   },
   {
     key: 'tech',
-    nome: 'Technology & Architecture',
+    nome: 'Tecnologia e Arquitetura',
     short: 'Tecnologia',
     descricao: 'Plataforma, integração, MLOps e observabilidade de IA.',
     cor: '#3f8ac0',
@@ -54,7 +54,7 @@ export const DIMENSIONS: Dimension[] = [
   },
   {
     key: 'security',
-    nome: 'Security, Risk & Governance',
+    nome: 'Segurança, Risco e Governança',
     short: 'Segurança',
     descricao: 'Uso responsável, privacidade, riscos e conformidade.',
     cor: '#0f7f8f',
@@ -62,7 +62,7 @@ export const DIMENSIONS: Dimension[] = [
   },
   {
     key: 'people',
-    nome: 'People & Operations',
+    nome: 'Pessoas e Operações',
     short: 'Pessoas',
     descricao: 'Capacitação, organização e cultura de adoção.',
     cor: '#4878b0',
@@ -70,7 +70,7 @@ export const DIMENSIONS: Dimension[] = [
   },
   {
     key: 'economics',
-    nome: 'Economics & AI FinOps',
+    nome: 'Economia e FinOps de IA',
     short: 'FinOps',
     descricao: 'Custo, orçamento e retorno dos investimentos em IA.',
     cor: '#6a8fb8',
