@@ -117,11 +117,11 @@ app.post('/login', async (c) => {
     .first<any>()
 
   if (!admin || !(await verifyPassword(senha, admin.senha_hash))) {
-    await audit(c.env.DB, email || 'desconhecido', 'login_falha', 'admin_users', admin?.id ?? null, 'credenciais inválidas')
+    await audit(c.env.DB, email || 'desconhecido', 'login_falha', 'admin_users', admin?.id ?? null, 'invalid credentials')
     const fa = await defaultCredsActive(c.env.DB)
     return c.html(
       loginPage({
-        error: 'E-mail ou senha incorretos.',
+        error: 'Incorrect e-mail or password.',
         email,
         firstAccess: fa.active && fa.email ? { email: fa.email, senha: c.env.ADMIN_PASSWORD || 'Unified@2026' } : null,
       }),
@@ -184,31 +184,31 @@ app.post('/configuracoes/acesso', requireAdmin(), async (c) => {
   const ok = (msg: string) => c.redirect(`/configuracoes?ok=${encodeURIComponent(msg)}#acesso`)
   const fail = (msg: string) => c.redirect(`/configuracoes?erro=${encodeURIComponent(msg)}#acesso`)
 
-  if (!nome || !email) return fail('Nome e e-mail são obrigatórios.')
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return fail('E-mail inválido.')
+  if (!nome || !email) return fail('Name and e-mail are required.')
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return fail('Invalid e-mail address.')
 
   const row = await c.env.DB.prepare('SELECT * FROM admin_users WHERE id = ?').bind(admin.id).first<any>()
   if (!row || !(await verifyPassword(senhaAtual, row.senha_hash))) {
-    return fail('Senha atual incorreta — nenhuma alteração foi salva.')
+    return fail('Current password is incorrect — no changes were saved.')
   }
 
   if (senhaNova || senhaConf) {
-    if (senhaNova.length < 8) return fail('A nova senha precisa ter ao menos 8 caracteres.')
-    if (senhaNova !== senhaConf) return fail('A confirmação não confere com a nova senha.')
+    if (senhaNova.length < 8) return fail('The new password must be at least 8 characters long.')
+    if (senhaNova !== senhaConf) return fail('The confirmation does not match the new password.')
     const novoHash = await hashPassword(senhaNova)
     await c.env.DB.prepare('UPDATE admin_users SET nome = ?, email = ?, senha_hash = ? WHERE id = ?')
       .bind(nome, email, novoHash, admin.id)
       .run()
     await setSetting(c.env.DB, 'admin_password_changed', '1', email)
-    await audit(c.env.DB, email, 'senha_alterada', 'admin_users', admin.id, 'senha do administrador atualizada')
-    return ok('Acesso atualizado: nome, e-mail e senha salvos.')
+    await audit(c.env.DB, email, 'senha_alterada', 'admin_users', admin.id, 'administrator password updated')
+    return ok('Access updated: name, e-mail and password saved.')
   }
 
   await c.env.DB.prepare('UPDATE admin_users SET nome = ?, email = ? WHERE id = ?')
     .bind(nome, email, admin.id)
     .run()
   await audit(c.env.DB, email, 'admin_atualizado', 'admin_users', admin.id)
-  return ok('Dados do administrador atualizados.')
+  return ok('Administrator details updated.')
 })
 
 app.post('/configuracoes/email', requireAdmin(), async (c) => {
@@ -232,30 +232,30 @@ app.post('/configuracoes/email', requireAdmin(), async (c) => {
     await setSetting(db, 'link_ttl_days', String(Math.min(365, Math.round(ttlNum))), admin.email)
   }
 
-  await audit(db, admin.email, 'configuracoes_email', 'settings', 'mail', `provedor ${provider}${key ? ' · chave atualizada' : ''}`)
-  return c.redirect(`/configuracoes?ok=${encodeURIComponent('Configurações de e-mail salvas.')}#email`)
+  await audit(db, admin.email, 'configuracoes_email', 'settings', 'mail', `provider ${provider}${key ? ' · key updated' : ''}`)
+  return c.redirect(`/configuracoes?ok=${encodeURIComponent('E-mail settings saved.')}#email`)
 })
 
 app.post('/configuracoes/testar', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const body = await c.req.parseBody()
   const destino = String(body.teste_email || '').trim()
-  if (!destino) return c.redirect(`/configuracoes?erro=${encodeURIComponent('Informe um e-mail de destino.')}#email`)
+  if (!destino) return c.redirect(`/configuracoes?erro=${encodeURIComponent('Please provide a destination e-mail.')}#email`)
 
   const cfg = await mailConfig(c.env, c.env.DB)
   if (!cfg.configured) {
     return c.redirect(
-      `/configuracoes?erro=${encodeURIComponent('Nenhuma chave de API salva — preencha e salve antes de testar.')}#email`
+      `/configuracoes?erro=${encodeURIComponent('No API key saved — fill it in and save before testing.')}#email`
     )
   }
 
   const result = await sendMail({ provider: cfg.provider, apiKey: cfg.apiKey, from: cfg.from }, testEmail(destino))
-  await audit(c.env.DB, admin.email, 'email_teste', 'settings', 'mail', `${destino} · ${result.sent ? 'enviado' : result.detail}`)
+  await audit(c.env.DB, admin.email, 'email_teste', 'settings', 'mail', `${destino} · ${result.sent ? 'sent' : result.detail}`)
 
   return c.redirect(
     result.sent
-      ? `/configuracoes?ok=${encodeURIComponent(`E-mail de teste enviado para ${destino}.`)}#email`
-      : `/configuracoes?erro=${encodeURIComponent(`Falha no envio: ${result.detail}`)}#email`
+      ? `/configuracoes?ok=${encodeURIComponent(`Test e-mail sent to ${destino}.`)}#email`
+      : `/configuracoes?erro=${encodeURIComponent(`Delivery failed: ${result.detail}`)}#email`
   )
 })
 
@@ -438,8 +438,8 @@ async function exportRows(db: D1Database) {
     .all<any>()
 
   const header = [
-    'Razão social', 'Nome fantasia', 'CNPJ', 'Vertical', 'Porte', 'Responsável', 'E-mail',
-    'Cidade', 'UF', 'Cadastro', 'Estado do assessment', 'Submetido em', 'Versão relatório', 'Índice',
+    'Legal name', 'Trading name', 'Company registration', 'Industry', 'Company size', 'Contact', 'E-mail',
+    'City', 'State', 'Registered', 'Assessment status', 'Submitted on', 'Report version', 'Index',
   ]
   const body = (results || []).map((r) => [
     r.razao_social, r.nome_fantasia, r.cnpj, r.vertical, r.tamanho_faixa, r.responsavel_nome, r.responsavel_email,
@@ -462,7 +462,7 @@ async function exportSheets(db: D1Database) {
     )
     .all<any>()
 
-  const respRows: any[][] = [['Cliente', 'Dimensão', 'Ordem', 'Pergunta', 'Resposta (JSON)']]
+  const respRows: any[][] = [['Client', 'Dimension', 'Order', 'Question', 'Answer (JSON)']]
   for (const r of resp.results || []) {
     respRows.push([r.razao_social, r.dimensao, r.ordem, r.texto, r.valor])
   }
@@ -475,7 +475,7 @@ async function exportSheets(db: D1Database) {
     )
     .all<any>()
 
-  const idxRows: any[][] = [['Cliente', 'Versão', 'Índice (0–5)', 'Gerado em', 'Dimensão', 'Atual', 'Meta', 'Gap', 'Prioridade']]
+  const idxRows: any[][] = [['Client', 'Version', 'Index (0–5)', 'Generated on', 'Dimension', 'Current', 'Target', 'Gap', 'Priority']]
   for (const r of reports.results || []) {
     try {
       const data = JSON.parse(r.conteudo)
@@ -497,16 +497,16 @@ async function exportSheets(db: D1Database) {
     )
     .all<any>()
 
-  const iniRows: any[][] = [['Cliente', 'Ordem', 'Iniciativa', 'Problema', 'Benefício', 'Urgência', 'Dimensão', 'Prioridade', 'Próximo passo']]
+  const iniRows: any[][] = [['Client', 'Order', 'Initiative', 'Problem', 'Benefit', 'Urgency', 'Dimension', 'Priority', 'Next step']]
   for (const i of inis.results || []) {
     iniRows.push([i.razao_social, i.ordem, i.nome, i.problema, i.beneficio, i.urgencia, i.dimensao, i.prioridade_calculada, i.proximo_passo])
   }
 
   return [
-    { name: 'Clientes', rows: clientes, widths: [34, 26, 20, 16, 20, 24, 30, 18, 6, 20, 22, 20, 16, 10] },
-    { name: 'Respostas', rows: respRows, widths: [30, 24, 8, 60, 40] },
-    { name: 'Índices', rows: idxRows, widths: [30, 8, 14, 20, 32, 8, 8, 8, 12] },
-    { name: 'Iniciativas', rows: iniRows, widths: [30, 8, 34, 40, 40, 10, 24, 12, 40] },
+    { name: 'Clients', rows: clientes, widths: [34, 26, 20, 16, 20, 24, 30, 18, 6, 20, 22, 20, 16, 10] },
+    { name: 'Responses', rows: respRows, widths: [30, 24, 8, 60, 40] },
+    { name: 'Indexes', rows: idxRows, widths: [30, 8, 14, 20, 32, 8, 8, 8, 12] },
+    { name: 'Initiatives', rows: iniRows, widths: [30, 8, 34, 40, 40, 10, 24, 12, 40] },
   ]
 }
 
@@ -534,12 +534,12 @@ app.post('/clientes/novo', requireAdmin(), async (c) => {
 
   if (!dados.razao_social || !dados.responsavel_nome || !dados.responsavel_email) {
     return c.html(
-      clientFormPage(admin, dados, { mode: 'novo', error: 'Razão social, nome e e-mail do responsável são obrigatórios.' }),
+      clientFormPage(admin, dados, { mode: 'novo', error: 'Legal name, contact name and contact e-mail are required.' }),
       400
     )
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(dados.responsavel_email)) {
-    return c.html(clientFormPage(admin, dados, { mode: 'novo', error: 'E-mail do responsável inválido.' }), 400)
+    return c.html(clientFormPage(admin, dados, { mode: 'novo', error: 'Invalid contact e-mail address.' }), 400)
   }
 
   const inserted = await c.env.DB.prepare(
@@ -587,7 +587,7 @@ app.post('/clientes/novo', requireAdmin(), async (c) => {
 
   await audit(
     c.env.DB, admin.email, 'cliente_criado', 'clients', clientId,
-    `assessment token criado · e-mail ${result.sent ? 'enviado' : 'não enviado (' + result.detail + ')'}`
+    `assessment token created · e-mail ${result.sent ? 'sent' : 'not sent (' + result.detail + ')'}`
   )
 
   return c.html(
@@ -596,8 +596,8 @@ app.post('/clientes/novo', requireAdmin(), async (c) => {
       link,
       expiraEm: expira,
       mailNote: result.sent
-        ? `Convite enviado para <strong>${esc(dados.responsavel_email)}</strong>. O link também está disponível para cópia abaixo.`
-        : `Envio automático indisponível (${esc(result.detail)}). Copie o link e envie manualmente para <strong>${esc(
+        ? `Invitation sent to <strong>${esc(dados.responsavel_email)}</strong>. The link is also available to copy below.`
+        : `Automatic delivery unavailable (${esc(result.detail)}). Copy the link and send it manually to <strong>${esc(
             dados.responsavel_email
           )}</strong>.`,
     })
@@ -685,7 +685,7 @@ app.post('/clientes/:id/editar', requireAdmin(), async (c) => {
   }
 
   if (!dados.razao_social || !dados.responsavel_nome || !dados.responsavel_email) {
-    return c.html(clientFormPage(admin, dados, { mode: 'editar', error: 'Razão social, nome e e-mail do responsável são obrigatórios.' }), 400)
+    return c.html(clientFormPage(admin, dados, { mode: 'editar', error: 'Legal name, contact name and contact e-mail are required.' }), 400)
   }
 
   await c.env.DB.prepare(
@@ -700,7 +700,7 @@ app.post('/clientes/:id/editar', requireAdmin(), async (c) => {
     .run()
 
   await audit(c.env.DB, admin.email, 'cliente_editado', 'clients', id)
-  return c.redirect(`/clientes/${id}?ok=${encodeURIComponent('Dados do cliente atualizados.')}`)
+  return c.redirect(`/clientes/${id}?ok=${encodeURIComponent('Client details updated.')}`)
 })
 
 app.post('/clientes/:id/reenviar', requireAdmin(), async (c) => {
@@ -737,14 +737,14 @@ app.post('/clientes/:id/reenviar', requireAdmin(), async (c) => {
 
   await audit(
     c.env.DB, admin.email, 'link_reenviado', 'assessments', assessment.id,
-    `token rotacionado · link anterior invalidado · e-mail ${result.sent ? 'enviado' : 'não enviado'}`
+    `token rotated · previous link invalidated · e-mail ${result.sent ? 'sent' : 'not sent'}`
   )
 
   return c.redirect(
     `/clientes/${id}?ok=${encodeURIComponent(
       result.sent
-        ? 'Novo link gerado e enviado por e-mail. O link anterior foi invalidado.'
-        : `Novo link gerado (envio automático indisponível: ${result.detail}). Copie o link na ficha do cliente.`
+        ? 'New link generated and e-mailed. The previous link has been invalidated.'
+        : `New link generated (automatic delivery unavailable: ${result.detail}). Copy the link from the client record.`
     )}`
   )
 })
@@ -763,8 +763,8 @@ app.post('/clientes/:id/reabrir', requireAdmin(), async (c) => {
     .bind(nowIso(), admin.email, assessment.id)
     .run()
 
-  await audit(c.env.DB, admin.email, 'formulario_reaberto', 'assessments', assessment.id, 'nova versão das respostas habilitada')
-  return c.redirect(`/clientes/${id}?ok=${encodeURIComponent('Formulário reaberto. O cliente pode complementar e reenviar; uma nova versão do relatório será gerada.')}`)
+  await audit(c.env.DB, admin.email, 'formulario_reaberto', 'assessments', assessment.id, 'new response version enabled')
+  return c.redirect(`/clientes/${id}?ok=${encodeURIComponent('Questionnaire reopened. The client can add to it and resubmit; a new report version will be generated.')}`)
 })
 
 app.post('/clientes/:id/excluir', requireAdmin(), async (c) => {
@@ -775,8 +775,8 @@ app.post('/clientes/:id/excluir', requireAdmin(), async (c) => {
   )
     .bind(nowIso(), admin.email, id)
     .run()
-  await audit(c.env.DB, admin.email, 'cliente_excluido', 'clients', id, 'exclusão lógica — dados preservados')
-  return c.redirect(`/painel?ok=${encodeURIComponent('Cliente excluído (exclusão lógica).')}`)
+  await audit(c.env.DB, admin.email, 'cliente_excluido', 'clients', id, 'logical deletion — data preserved')
+  return c.redirect(`/painel?ok=${encodeURIComponent('Client deleted (logical deletion).')}`)
 })
 
 /* ── relatórios (admin) ────────────────────────────────────────────────── */
@@ -808,8 +808,8 @@ async function renderAdminReport(c: any, admin: any, clientId: number, vParam?: 
   if (!reports.length) {
     return c.html(
       adminShell(
-        { title: client.nome_fantasia || client.razao_social, subtitle: 'Relatório', active: '/clientes', admin },
-        alertBox('warn', 'Nenhum relatório gerado. O relatório é criado automaticamente quando o cliente envia o formulário.')
+        { title: client.nome_fantasia || client.razao_social, subtitle: 'Report', active: '/clientes', admin },
+        alertBox('warn', 'No report generated yet. The report is created automatically when the client submits the questionnaire.')
       )
     )
   }
@@ -849,13 +849,13 @@ async function renderAdminReport(c: any, admin: any, clientId: number, vParam?: 
     ? ''
     : `<a class="btn btn-sm" href="/clientes/${clientId}/relatorio.pdf?v=${chosen.versao}" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> PDF</a>
        <a class="btn btn-sm btn-ghost" href="/clientes/${clientId}/relatorio.xlsx?v=${chosen.versao}"><i class="fa-solid fa-file-excel" aria-hidden="true"></i> XLSX</a>
-       <a class="btn btn-sm btn-ghost" href="/clientes/${clientId}">Ficha do cliente</a>`
+       <a class="btn btn-sm btn-ghost" href="/clientes/${clientId}">Client record</a>`
 
   const meta = `<div class="card" style="margin-bottom:16px;padding:12px 16px">
     <div class="small muted">
-      Preenchido por <strong>${esc(client.responsavel_nome)}</strong> (${esc(client.responsavel_email)}) ·
-      submetido em ${esc(fmtDate(assessment.submetido_em))} · versão v${chosen.versao} gerada em ${esc(fmtDate(chosen.gerado_em))}
-      ${assessment.reaberto ? ' · formulário já reaberto pelo consultor' : ''}
+      Completed by <strong>${esc(client.responsavel_nome)}</strong> (${esc(client.responsavel_email)}) ·
+      submitted on ${esc(fmtDate(assessment.submetido_em))} · version v${chosen.versao} generated on ${esc(fmtDate(chosen.gerado_em))}
+      ${assessment.reaberto ? ' · questionnaire already reopened by the consultant' : ''}
     </div>
   </div>`
 
@@ -863,12 +863,12 @@ async function renderAdminReport(c: any, admin: any, clientId: number, vParam?: 
     return c.html(
       doc(
         {
-          title: `Relatório · ${client.nome_fantasia || client.razao_social}`,
+          title: `Report · ${client.nome_fantasia || client.razao_social}`,
           bodyClass: 'public-shell',
           head: `<script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 400); });</script>`,
         },
         `<div class="public-top no-print"><img src="/static/logo.png" alt="Unified Technologies">
-          <span class="small muted">Use a caixa de impressão para salvar como PDF · <a href="javascript:window.print()">imprimir novamente</a></span>
+          <span class="small muted">Use the print dialog to save as PDF · <a href="javascript:window.print()">print again</a></span>
         </div>
         <div class="public-body">${html}</div>`
       )
@@ -879,7 +879,7 @@ async function renderAdminReport(c: any, admin: any, clientId: number, vParam?: 
     adminShell(
       {
         title: client.nome_fantasia || client.razao_social,
-        subtitle: 'Relatório de maturidade',
+        subtitle: 'Maturity report',
         active: '/clientes',
         admin,
         actions,
@@ -903,28 +903,28 @@ async function reportXlsx(c: any, clientId: number, vParam?: string) {
   const slug = (client.nome_fantasia || client.razao_social || 'cliente').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()
 
   const scoreRows: any[][] = [
-    ['Cliente', client.nome_fantasia || client.razao_social],
-    ['Relatório', `v${chosen.versao}`],
-    ['Índice geral (0–5)', Number(chosen.indice_geral)],
+    ['Client', client.nome_fantasia || client.razao_social],
+    ['Report', `v${chosen.versao}`],
+    ['Overall index (0–5)', Number(chosen.indice_geral)],
     [],
-    ['Dimensão', 'Atual', 'Meta 12m', 'Gap', 'Prioridade', 'Confiança', 'Respondidas'],
+    ['Dimension', 'Current', '12m target', 'Gap', 'Priority', 'Confidence', 'Answered'],
     ...data.scorecard.map((r: any) => [r.nome, r.atual, r.meta, r.gap, r.prioridade, r.confianca, `${r.respondidas}/${r.total}`]),
   ]
 
   const iniRows: any[][] = [
-    ['Iniciativa', 'Prioridade', 'Urgência', 'Dimensão', 'Problema', 'Benefício', 'Próximo passo', 'Horizonte'],
+    ['Initiative', 'Priority', 'Urgency', 'Dimension', 'Problem', 'Benefit', 'Next step', 'Horizon'],
     ...data.iniciativas.map((i: any) => [i.nome, i.prioridade_calculada, i.urgencia, i.dimensao, i.problema, i.beneficio, i.proximo_passo, i.horizonte]),
   ]
 
-  const planoRows: any[][] = [['Horizonte', 'Iniciativas']]
+  const planoRows: any[][] = [['Horizon', 'Initiatives']]
   for (const h of data.plano) {
     planoRows.push([h.label, h.itens.map((i: any) => i.nome).join(' | ') || '—'])
   }
 
   const bytes = buildXlsx([
-    { name: 'Scorecard', rows: scoreRows, widths: [34, 10, 12, 8, 12, 14, 12] },
-    { name: 'Iniciativas', rows: iniRows, widths: [36, 12, 10, 24, 40, 40, 44, 12] },
-    { name: 'Plano 90 dias', rows: planoRows, widths: [26, 70] },
+    { name: 'Results', rows: scoreRows, widths: [34, 10, 12, 8, 12, 14, 12] },
+    { name: 'Initiatives', rows: iniRows, widths: [36, 12, 10, 24, 40, 40, 44, 12] },
+    { name: '90-day plan', rows: planoRows, widths: [26, 70] },
   ])
 
   return new Response(bytes as unknown as BodyInit, {
@@ -939,7 +939,7 @@ async function reportXlsx(c: any, clientId: number, vParam?: string) {
 app.get('/a/:token', async (c) => {
   const token = c.req.param('token')
   const a = await assessmentByToken(c.env, token)
-  if (!a) return notFoundPage(c, 'Link inválido', 'Este link não corresponde a um assessment ativo. Solicite um novo link ao consultor da Unified Technologies.')
+  if (!a) return notFoundPage(c, 'Invalid link', 'This link does not match an active assessment. Please request a new link from your Unified Technologies consultant.')
   if (linkExpired(a)) {
     return expiredPage(c, a.client.nome_fantasia || a.client.razao_social, a.expira_em)
   }
@@ -973,10 +973,10 @@ app.get('/a/:token', async (c) => {
 app.post('/api/a/:token/save', async (c) => {
   const token = c.req.param('token')
   const a = await assessmentByToken(c.env, token)
-  if (!a) return c.json({ ok: false, message: 'Link inválido.' }, 404)
-  if (linkExpired(a)) return c.json({ ok: false, message: 'Link expirado.' }, 410)
+  if (!a) return c.json({ ok: false, message: 'Invalid link.' }, 404)
+  if (linkExpired(a)) return c.json({ ok: false, message: 'Link expired.' }, 410)
   if (a.estado === 'submetido' || (a.estado === 'gerado' && !a.reaberto)) {
-    return c.json({ ok: false, message: 'Formulário já submetido.' }, 409)
+    return c.json({ ok: false, message: 'Questionnaire already submitted.' }, 409)
   }
 
   const body: any = await c.req.json().catch(() => ({}))
@@ -1050,8 +1050,8 @@ app.post('/api/a/:token/save', async (c) => {
 app.post('/api/a/:token/submit', async (c) => {
   const token = c.req.param('token')
   const a = await assessmentByToken(c.env, token)
-  if (!a) return c.json({ ok: false, message: 'Link inválido.' }, 404)
-  if (linkExpired(a)) return c.json({ ok: false, message: 'Link expirado.' }, 410)
+  if (!a) return c.json({ ok: false, message: 'Invalid link.' }, 404)
+  if (linkExpired(a)) return c.json({ ok: false, message: 'Link expired.' }, 410)
   if (a.estado === 'gerado' && !a.reaberto) {
     return c.json({ ok: true, redirect: `/a/${token}/relatorio` })
   }
@@ -1082,7 +1082,7 @@ app.post('/api/a/:token/submit', async (c) => {
     return c.json(
       {
         ok: false,
-        message: `${pendentes.length} pergunta(s) obrigatória(s) em branco.`,
+        message: `${pendentes.length} required question(s) left blank.`,
         pendentes: pendentes.map((q) => ({ id: q.id, texto: q.texto })),
       },
       400
@@ -1128,7 +1128,7 @@ app.post('/api/a/:token/submit', async (c) => {
     }
   }
 
-  await audit(c.env.DB, a.client.responsavel_email, 'assessment_submetido', 'assessments', a.id, `relatório v${versao} gerado (id ${inserted.meta.last_row_id})`)
+  await audit(c.env.DB, a.client.responsavel_email, 'assessment_submetido', 'assessments', a.id, `report v${versao} generated (id ${inserted.meta.last_row_id})`)
 
   return c.json({ ok: true, redirect: `/a/${token}/relatorio`, versao, report_id: inserted.meta.last_row_id })
 })
@@ -1137,7 +1137,7 @@ app.post('/api/a/:token/submit', async (c) => {
 app.get('/a/:token/respostas', async (c) => {
   const token = c.req.param('token')
   const a = await assessmentByToken(c.env, token)
-  if (!a) return notFoundPage(c, 'Link inválido', 'Este link não corresponde a um assessment ativo.')
+  if (!a) return notFoundPage(c, 'Invalid link', 'This link does not match an active assessment.')
 
   const questions = await questionsFor(c.env, a.questionario_versao)
   const respostas = await responsesMap(c.env, a.id)
@@ -1156,8 +1156,8 @@ app.get('/a/:token/respostas', async (c) => {
       respostas,
       metas,
       readOnlyNote: submetido
-        ? 'Formulário já submetido — as respostas abaixo estão em modo somente leitura. Alterações exigem reabertura pelo consultor da Unified Technologies.'
-        : 'Este é o seu rascunho atual. As respostas são salvas automaticamente enquanto você preenche.',
+        ? 'Questionnaire already submitted — the answers below are read-only. Changes require the Unified Technologies consultant to reopen it.'
+        : 'This is your current draft. Answers are saved automatically as you fill the questionnaire in.',
     })
   )
 })
@@ -1176,7 +1176,7 @@ app.get('/a/:token/relatorio.pdf', async (c) => {
 app.get('/a/:token/relatorio.xlsx', async (c) => {
   const token = c.req.param('token')
   const a = await assessmentByToken(c.env, token)
-  if (!a) return notFoundPage(c, 'Link inválido', 'Solicite um novo link ao consultor da Unified Technologies.')
+  if (!a) return notFoundPage(c, 'Invalid link', 'Please request a new link from your Unified Technologies consultant.')
   const reports = await reportsFor(c.env, a.id)
   if (!reports.length) return c.redirect(`/a/${token}`)
   const chosen = (c.req.query('v') && reports.find((r) => String(r.versao) === String(c.req.query('v')))) || reports[reports.length - 1]
@@ -1184,20 +1184,20 @@ app.get('/a/:token/relatorio.xlsx', async (c) => {
   const slug = (a.client.nome_fantasia || a.client.razao_social).replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()
   const bytes = buildXlsx([
     {
-      name: 'Scorecard',
+      name: 'Results',
       rows: [
-        ['Cliente', a.client.nome_fantasia || a.client.razao_social],
-        ['Índice geral (0–5)', Number(chosen.indice_geral)],
+        ['Client', a.client.nome_fantasia || a.client.razao_social],
+        ['Overall index (0–5)', Number(chosen.indice_geral)],
         [],
-        ['Dimensão', 'Atual', 'Meta 12m', 'Gap', 'Prioridade'],
+        ['Dimension', 'Current', '12m target', 'Gap', 'Priority'],
         ...data.scorecard.map((r: any) => [r.nome, r.atual, r.meta, r.gap, r.prioridade]),
       ],
       widths: [34, 10, 12, 8, 12],
     },
     {
-      name: 'Iniciativas',
+      name: 'Initiatives',
       rows: [
-        ['Iniciativa', 'Prioridade', 'Problema', 'Benefício', 'Próximo passo'],
+        ['Initiative', 'Priority', 'Problem', 'Benefit', 'Next step'],
         ...data.iniciativas.map((i: any) => [i.nome, i.prioridade_calculada, i.problema, i.beneficio, i.proximo_passo]),
       ],
       widths: [36, 12, 40, 40, 44],
@@ -1213,11 +1213,11 @@ app.get('/a/:token/relatorio.xlsx', async (c) => {
 
 async function renderClientReport(c: any, token: string, vParam?: string, print = false) {
   const a = await assessmentByToken(c.env, token)
-  if (!a) return notFoundPage(c, 'Link inválido', 'Este link não corresponde a um assessment ativo.')
+  if (!a) return notFoundPage(c, 'Invalid link', 'This link does not match an active assessment. Please request a new link from your Unified Technologies consultant.')
   const reports = await reportsFor(c.env, a.id)
   if (!reports.length) {
     if (a.estado === 'submetido') {
-      return c.html(publicShell('Relatório em preparação', alertBox('info', 'Relatório em preparação. Atualize a página em instantes.')))
+      return c.html(publicShell('Report in preparation', alertBox('info', 'Report in preparation. Please refresh the page in a moment.')))
     }
     return c.redirect(`/a/${token}`)
   }
@@ -1250,13 +1250,13 @@ async function renderClientReport(c: any, token: string, vParam?: string, print 
 
   const actions = `<div class="card no-print" style="margin-bottom:18px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
     <div>
-      <strong style="color:var(--navy)">Relatório pronto</strong>
+      <strong style="color:var(--navy)">Report ready</strong>
       <div class="small muted">v${chosen.versao} · ${esc(fmtDate(chosen.gerado_em))} · ${esc(a.client.nome_fantasia || a.client.razao_social)}</div>
     </div>
     <div class="report-actions">
-      <a class="btn btn-sm" href="/a/${token}/relatorio.pdf?v=${chosen.versao}" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Exportar PDF</a>
+      <a class="btn btn-sm" href="/a/${token}/relatorio.pdf?v=${chosen.versao}" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Export PDF</a>
       <a class="btn btn-sm btn-ghost" href="/a/${token}/relatorio.xlsx?v=${chosen.versao}"><i class="fa-solid fa-file-excel" aria-hidden="true"></i> XLSX</a>
-      <a class="btn btn-sm btn-ghost" href="/a/${token}/respostas">Ver respostas</a>
+      <a class="btn btn-sm btn-ghost" href="/a/${token}/respostas">View answers</a>
     </div>
   </div>`
 
@@ -1264,7 +1264,7 @@ async function renderClientReport(c: any, token: string, vParam?: string, print 
     return c.html(
       doc(
         {
-          title: `Relatório · ${a.client.nome_fantasia || a.client.razao_social}`,
+          title: `Report · ${a.client.nome_fantasia || a.client.razao_social}`,
           bodyClass: 'public-shell',
           head: `<script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 400); });</script>`,
         },
@@ -1275,7 +1275,7 @@ async function renderClientReport(c: any, token: string, vParam?: string, print 
     )
   }
 
-  return c.html(publicShell(`Relatório · ${a.client.nome_fantasia || a.client.razao_social}`, actions + html))
+  return c.html(publicShell(`Report · ${a.client.nome_fantasia || a.client.razao_social}`, actions + html))
 }
 
 /* ── páginas de erro ───────────────────────────────────────────────────── */
@@ -1287,9 +1287,9 @@ function notFoundPage(c: any, title: string, message: string) {
         <i class="fa-solid fa-link-slash" style="font-size:30px;color:var(--blue-200)" aria-hidden="true"></i>
         <h1 style="font-size:22px;margin:14px 0 8px">${esc(title)}</h1>
         <p class="muted">${esc(message)}</p>
-        <p class="small muted" style="margin-top:18px">Unified Technologies · Assessment de Maturidade em IA</p>
+        <p class="small muted" style="margin-top:18px">Unified Technologies · AI Maturity Assessment</p>
       </div>`,
-      { backHref: '/', backLabel: 'Início' }
+      { backHref: '/', backLabel: 'Home' }
     ),
     404
   )
@@ -1298,12 +1298,12 @@ function notFoundPage(c: any, title: string, message: string) {
 function expiredPage(c: any, empresa: string, expira: string | null) {
   return c.html(
     publicShell(
-      'Link expirado',
+      'Link expired',
       `<div class="card" style="max-width:560px;margin:60px auto;text-align:center">
         <i class="fa-regular fa-clock" style="font-size:30px;color:var(--warn)" aria-hidden="true"></i>
-        <h1 style="font-size:22px;margin:14px 0 8px">Este link expirou</h1>
-        <p class="muted">O link do assessment de <strong>${esc(empresa)}</strong> ${expira ? `venceu em ${esc(fmtDate(expira))}` : 'não está mais válido'}.
-        Solicite um novo link ao consultor da Unified Technologies — suas respostas anteriores são preservadas.</p>
+        <h1 style="font-size:22px;margin:14px 0 8px">This link has expired</h1>
+        <p class="muted">The assessment link for <strong>${esc(empresa)}</strong> ${expira ? `expired on ${esc(fmtDate(expira))}` : 'is no longer valid'}.
+        Please request a new link from your Unified Technologies consultant — your previous answers are preserved.</p>
       </div>`,
       { backHref: '/', backLabel: 'Início' }
     ),
@@ -1311,6 +1311,6 @@ function expiredPage(c: any, empresa: string, expira: string | null) {
   )
 }
 
-app.notFound((c) => notFoundPage(c, 'Página não encontrada', 'O endereço acessado não existe nesta aplicação.'))
+app.notFound((c) => notFoundPage(c, 'Page not found', 'The address you accessed does not exist in this application.'))
 
 export default app

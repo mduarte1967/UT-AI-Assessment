@@ -22,7 +22,7 @@ export function addDays(days: number, from: Date = new Date()): Date {
   return d
 }
 
-const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '—'
@@ -69,10 +69,10 @@ export function initials(name: string): string {
 
 export function estadoLabel(estado: string): string {
   switch (estado) {
-    case 'aguardando': return 'Aguardando preenchimento'
-    case 'em_preenchimento': return 'Em preenchimento'
-    case 'submetido': return 'Submetido'
-    case 'gerado': return 'Relatório gerado'
+    case 'aguardando': return 'Awaiting response'
+    case 'em_preenchimento': return 'In progress'
+    case 'submetido': return 'Submitted'
+    case 'gerado': return 'Report generated'
     default: return estado
   }
 }
@@ -98,17 +98,17 @@ export function prioridadeTone(p: string): string {
 
 export function prioridadePt(p: string): string {
   switch (p) {
-    case 'Critical': return 'Crítica'
-    case 'High': return 'Alta'
-    case 'Medium': return 'Média'
-    case 'Low': return 'Baixa'
+    case 'Critical': return 'Critical'
+    case 'High': return 'High'
+    case 'Medium': return 'Medium'
+    case 'Low': return 'Low'
     default: return p
   }
 }
 
 export function formatIndex(n: number | null | undefined): string {
   if (n === null || n === undefined || Number.isNaN(n)) return '—'
-  return n.toFixed(1).replace('.', ',')
+  return n.toFixed(1)
 }
 
 export function formatPct(n: number): string {

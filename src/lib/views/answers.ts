@@ -16,7 +16,7 @@ export type AnswersContext = {
 }
 
 function answerLabel(q: QRow, val: unknown): string {
-  if (val === null || val === undefined) return '<span class="muted">Não respondida</span>'
+  if (val === null || val === undefined) return '<span class="muted">Not answered</span>'
   if (q.tipo === 'escala') {
     const v = Number((val as any)?.v ?? val)
     const idx = v - 1
@@ -30,7 +30,7 @@ function answerLabel(q: QRow, val: unknown): string {
   }
   if (q.tipo === 'multipla') {
     const arr: number[] = Array.isArray(val) ? val.map(Number) : (val as any)?.sel?.map(Number) || []
-    if (!arr.length) return '<span class="muted">Não respondida</span>'
+    if (!arr.length) return '<span class="muted">Not answered</span>'
     return arr.map((i) => esc(q.opcoes?.[i]?.label || '')).filter(Boolean).join(' · ')
   }
   return esc(String((val as any)?.t ?? val ?? '—'))
@@ -48,7 +48,7 @@ export function renderAnswersPage(ctx: AnswersContext): string {
       <div class="section-head">
         <div class="dim-icon"><i class="fa-solid ${dim.icone}" aria-hidden="true"></i></div>
         <div><h2>${esc(dim.nome)}</h2><div class="sub">${esc(dim.descricao)}</div></div>
-        <span class="count">meta L${meta}</span>
+        <span class="count">target L${meta}</span>
       </div>
       <div class="table-wrap" style="border:0;margin-top:10px">
         <table class="data" style="font-size:13px">
@@ -82,13 +82,13 @@ export function renderAnswersPage(ctx: AnswersContext): string {
   const body = `
 <div class="card" style="margin-bottom:18px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap">
   <div>
-    <h1 style="font-size:20px">Respostas enviadas</h1>
+    <h1 style="font-size:20px">Submitted responses</h1>
     <div class="small muted">${esc(ctx.empresa)} · ${esc(ctx.responsavel)}${
-      ctx.submetidoEm ? ` · submetido em ${esc(fmtDate(ctx.submetidoEm))}` : ''
+      ctx.submetidoEm ? ` · submitted on ${esc(fmtDate(ctx.submetidoEm))}` : ''
     }</div>
   </div>
   <div class="report-actions">
-    ${ctx.versaoRelatorio ? `<a class="btn btn-sm" href="/a/${ctx.token}/relatorio"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> Ver relatório</a>` : ''}
+    ${ctx.versaoRelatorio ? `<a class="btn btn-sm" href="/a/${ctx.token}/relatorio"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> View report</a>` : ''}
     <a class="btn btn-sm btn-ghost" href="/a/${ctx.token}/relatorio.pdf" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> PDF</a>
   </div>
 </div>
@@ -96,8 +96,8 @@ export function renderAnswersPage(ctx: AnswersContext): string {
 <div class="alert info"><i class="fa-solid fa-lock" aria-hidden="true"></i><div>${ctx.readOnlyNote}</div></div>
 
 <div class="card" style="margin-bottom:18px">
-  <div class="card-head"><div><h2>Progresso do preenchimento</h2>
-    <div class="sub">${answered} de ${scored.length} perguntas respondidas</div></div></div>
+  <div class="card-head"><div><h2>Completion progress</h2>
+    <div class="sub">${answered} of ${scored.length} questions answered</div></div></div>
   <div class="bar" style="height:9px"><span style="width:${Math.round((answered / Math.max(1, scored.length)) * 100)}%"></span></div>
 </div>
 
@@ -106,11 +106,11 @@ ${sections}
 <section class="section">
   <div class="section-head">
     <div class="dim-icon"><i class="fa-solid fa-bullseye" aria-hidden="true"></i></div>
-    <div><h2>Metas declaradas para 12 meses</h2><div class="sub">Comparativo usado no radar atual × meta</div></div>
+    <div><h2>Targets declared for 12 months</h2><div class="sub">Comparison used in the current × target radar</div></div>
   </div>
   <div class="targets" style="margin-top:12px">${metasRows}</div>
 </section>
 `
 
-  return publicShell('Respostas enviadas', body)
+  return publicShell('Submitted responses', body)
 }

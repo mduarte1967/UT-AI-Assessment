@@ -44,11 +44,11 @@ export function renderFormPage(ctx: FormContext): string {
             <span class="n">${qIndex}.</span>
             <span>${esc(q.texto)}${
               q.obrigatoria
-                ? ' <span class="req" aria-hidden="true">*</span><span class="sr-only">(obrigatória)</span>'
+                ? ' <span class="req" aria-hidden="true">*</span><span class="sr-only">(required)</span>'
                 : ''
             }</span>
             <span class="q-status" data-status="${q.id}">${
-              answered ? '<i class="fa-solid fa-circle-check" style="color:#12805c" aria-label="Respondida"></i>' : ''
+              answered ? '<i class="fa-solid fa-circle-check" style="color:#12805c" aria-label="Answered"></i>' : ''
             }</span>
           </div>
           ${q.ajuda ? `<div class="q-help">${esc(q.ajuda)}</div>` : ''}
@@ -70,10 +70,10 @@ export function renderFormPage(ctx: FormContext): string {
       <div class="divider"></div>
       <div class="flex-between">
         <div>
-          <strong class="small">Meta para 12 meses nesta dimensão</strong>
-          <div class="small muted">Nível desejado ao final de 12 meses — base do comparativo atual × meta do radar.</div>
+          <strong class="small">12-month target for this dimension</strong>
+          <div class="small muted">Desired level at the end of 12 months — the basis of the current × target comparison in the radar.</div>
         </div>
-        <div class="seg" role="group" aria-label="Meta de 12 meses para ${esc(dim.nome)}">
+        <div class="seg" role="group" aria-label="12-month target for ${esc(dim.nome)}">
           ${[0, 1, 2, 3, 4]
             .map(
               (lvl) =>
@@ -91,39 +91,39 @@ export function renderFormPage(ctx: FormContext): string {
     .map((idx) => {
       const ini = ctx.initiatives[idx] || {}
       return `<div class="ini-card" data-ini="${idx}">
-        <div class="ini-head"><strong>Iniciativa ${idx + 1}</strong>
-          <span class="small muted">Opcional</span>
+        <div class="ini-head"><strong>Initiative ${idx + 1}</strong>
+          <span class="small muted">Optional</span>
         </div>
-        <div class="field"><label for="ini-${idx}-nome">Nome da iniciativa</label>
+        <div class="field"><label for="ini-${idx}-nome">Initiative name</label>
           <input type="text" id="ini-${idx}-nome" data-ini-field="nome" data-ini-idx="${idx}" value="${esc(
             ini.nome || ''
-          )}" placeholder="Ex.: Triagem assistida de laudos" maxlength="120">
+          )}" placeholder="e.g. Assisted triage of medical reports" maxlength="120">
         </div>
         <div class="grid-2">
-          <div class="field"><label for="ini-${idx}-problema">Problema que resolve</label>
-            <textarea id="ini-${idx}-problema" data-ini-field="problema" data-ini-idx="${idx}" maxlength="400" placeholder="Qual dor de negócio ela endereça?">${esc(
+          <div class="field"><label for="ini-${idx}-problema">Problem it solves</label>
+            <textarea id="ini-${idx}-problema" data-ini-field="problema" data-ini-idx="${idx}" maxlength="400" placeholder="Which business pain does it address?">${esc(
               ini.problema || ''
             )}</textarea>
           </div>
-          <div class="field"><label for="ini-${idx}-beneficio">Benefício esperado</label>
-            <textarea id="ini-${idx}-beneficio" data-ini-field="beneficio" data-ini-idx="${idx}" maxlength="400" placeholder="Impacto mensurável esperado">${esc(
+          <div class="field"><label for="ini-${idx}-beneficio">Expected benefit</label>
+            <textarea id="ini-${idx}-beneficio" data-ini-field="beneficio" data-ini-idx="${idx}" maxlength="400" placeholder="Expected measurable impact">${esc(
               ini.beneficio || ''
             )}</textarea>
           </div>
         </div>
         <div class="grid-2">
           <div class="field" style="margin:0">
-            <label for="ini-${idx}-urgencia">Grau de urgência</label>
+            <label for="ini-${idx}-urgencia">Urgency level</label>
             <select id="ini-${idx}-urgencia" data-ini-field="urgencia" data-ini-idx="${idx}">
-              <option value="1" ${Number(ini.urgencia || 0) === 1 ? 'selected' : ''}>1 · Baixa</option>
-              <option value="2" ${Number(ini.urgencia || 0) === 2 || !ini.urgencia ? 'selected' : ''}>2 · Média</option>
-              <option value="3" ${Number(ini.urgencia || 0) === 3 ? 'selected' : ''}>3 · Alta</option>
+              <option value="1" ${Number(ini.urgencia || 0) === 1 ? 'selected' : ''}>1 · Low</option>
+              <option value="2" ${Number(ini.urgencia || 0) === 2 || !ini.urgencia ? 'selected' : ''}>2 · Medium</option>
+              <option value="3" ${Number(ini.urgencia || 0) === 3 ? 'selected' : ''}>3 · High</option>
             </select>
           </div>
           <div class="field" style="margin:0">
-            <label for="ini-${idx}-dimensao">Dimensão que sustenta</label>
+            <label for="ini-${idx}-dimensao">Supporting dimension</label>
             <select id="ini-${idx}-dimensao" data-ini-field="dimensao" data-ini-idx="${idx}">
-              <option value="">Não sei / várias</option>
+              <option value="">Not sure / several</option>
               ${DIMENSIONS.map(
                 (d) => `<option value="${d.key}" ${ini.dimensao === d.key ? 'selected' : ''}>${esc(d.nome)}</option>`
               ).join('')}
@@ -138,7 +138,7 @@ export function renderFormPage(ctx: FormContext): string {
     ? `<section class="section" id="contexto" data-section="contexto">
       <div class="section-head">
         <div class="dim-icon"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i></div>
-        <div><h2>Contexto</h2><div class="sub">Opcional · não pontua, mas aparece no resumo executivo do relatório.</div></div>
+        <div><h2>Context</h2><div class="sub">Optional · not scored, but appears in the executive summary of the report.</div></div>
       </div>
       ${textQs
         .map(
@@ -147,7 +147,7 @@ export function renderFormPage(ctx: FormContext): string {
           }">
           <div class="q-title"><span>${esc(q.texto)}</span></div>
           ${q.ajuda ? `<div class="q-help">${esc(q.ajuda)}</div>` : ''}
-          <textarea id="q-${q.id}" data-qid="${q.id}" data-tipo="texto" rows="3" maxlength="400" placeholder="Sua resposta…">${esc(
+          <textarea id="q-${q.id}" data-qid="${q.id}" data-tipo="texto" rows="3" maxlength="400" placeholder="Your answer…">${esc(
             String((ctx.respostas[q.id] as any)?.t ?? ctx.respostas[q.id] ?? '')
           )}</textarea>
         </div>`
@@ -159,17 +159,17 @@ export function renderFormPage(ctx: FormContext): string {
   const revisao = `<section class="section" id="revisao" data-section="revisao">
     <div class="section-head">
       <div class="dim-icon"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i></div>
-      <div><h2>Revisão e envio</h2><div class="sub">Confira as pendências antes de submeter. Após o envio, o formulário é bloqueado.</div></div>
+      <div><h2>Review and submit</h2><div class="sub">Check the outstanding items before submitting. Once submitted, the questionnaire is locked.</div></div>
     </div>
     <div id="pending-box" style="margin-top:14px" aria-live="polite">
       ${pendingHtml(ctx.questions, ctx.respostas)}
     </div>
     <div class="alert info"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><div>
-      Ao submeter, o relatório é gerado automaticamente com índice de maturidade, quadro de resultados das 7 dimensões, radar atual × meta,
-      iniciativas priorizadas e plano de 90 dias. Alterações posteriores exigem reabertura pelo consultor da Unified.
+      On submit, the report is generated automatically with the maturity index, the results table for the 7 dimensions, the current × target radar,
+      prioritised initiatives and the 90-day plan. Later changes require the Unified consultant to reopen it.
     </div></div>
     <button class="btn btn-accent" type="button" id="btn-submit" style="height:44px;padding:0 22px">
-      <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar assessment e gerar relatório
+      <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Submit assessment and generate report
     </button>
   </section>`
 
@@ -182,23 +182,23 @@ export function renderFormPage(ctx: FormContext): string {
         d.short
       )}</a>`
     }),
-    `<a href="#revisao" class="step" data-step="revisao">✓ · Revisão</a>`,
+    `<a href="#revisao" class="step" data-step="revisao">✓ · Review</a>`,
   ].join('')
 
   const body = `
 <div class="progress-card">
   <div class="target">
-    <span class="small" style="color:#b9c4de">Assessment de</span>
+    <span class="small" style="color:#b9c4de">Assessment for</span>
     <strong>${esc(ctx.empresa)}</strong>
     <span class="small" style="color:#b9c4de">${esc(ctx.responsavel)}${
-      ctx.expiraEm ? ` · disponível até ${esc(fmtDate(ctx.expiraEm))}` : ''
+      ctx.expiraEm ? ` · available until ${esc(fmtDate(ctx.expiraEm))}` : ''
     }</span>
   </div>
   <div class="progress-track">
     <div class="bar"><span id="progress-bar" style="width:${pct}%"></span></div>
     <div class="pct">
-      <span id="progress-text">${answeredCount} de ${scored.length} perguntas respondidas</span>
-      <span><span id="progress-pct">${pct}%</span> · <span id="save-state" class="save-state">rascunho salvo automaticamente</span></span>
+      <span id="progress-text">${answeredCount} of ${scored.length} questions answered</span>
+      <span><span id="progress-pct">${pct}%</span> · <span id="save-state" class="save-state">draft saved automatically</span></span>
     </div>
   </div>
 </div>
@@ -207,29 +207,29 @@ ${ctx.flash ? `<div class="alert ${ctx.flash.kind}" role="status"><i class="fa-s
 ${
   ctx.reaberto
     ? `<div class="alert warn"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i><div>
-        <strong>Formulário reaberto pelo consultor.</strong> Ao enviar novamente será gerada uma nova versão do relatório — a anterior permanece acessível.
+        <strong>Questionnaire reopened by the consultant.</strong> Submitting again generates a new report version — the previous one stays accessible.
       </div></div>`
     : ''
 }
 
-<nav class="steps" aria-label="Seções do formulário">${steps}</nav>
+<nav class="steps" aria-label="Questionnaire sections">${steps}</nav>
 ${sections}
 ${textoSec}
 <section class="section" id="iniciativas" data-section="iniciativas">
   <div class="section-head">
     <div class="dim-icon"><i class="fa-solid fa-lightbulb" aria-hidden="true"></i></div>
-    <div><h2>Candidatos a iniciativa de IA</h2>
-      <div class="sub">Até 5 iniciativas. Se deixar em branco, o relatório sugere iniciativas do seu vertical.</div></div>
+    <div><h2>Candidate AI initiatives</h2>
+      <div class="sub">Up to 5 initiatives. If left blank, the report suggests initiatives for your industry.</div></div>
   </div>
   <div style="margin-top:14px">${iniCards}</div>
 </section>
 ${revisao}
 <div class="sticky-bar no-print">
   <div class="inner">
-    <span class="save-state" id="sticky-state"><i class="fa-solid fa-cloud" aria-hidden="true"></i> rascunho salvo automaticamente</span>
+    <span class="save-state" id="sticky-state"><i class="fa-solid fa-cloud" aria-hidden="true"></i> draft saved automatically</span>
     <div style="display:flex;gap:8px">
-      <a class="btn btn-ghost" href="#revisao">Revisar</a>
-      <button class="btn" type="button" id="btn-submit-bottom"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar</button>
+      <a class="btn btn-ghost" href="#revisao">Review</a>
+      <button class="btn" type="button" id="btn-submit-bottom"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Submit</button>
     </div>
   </div>
 </div>
@@ -241,10 +241,10 @@ ${revisao}
 function pendingHtml(questions: QRow[], respostas: Record<number, unknown>): string {
   const pend = questions.filter((q) => q.obrigatoria && !isAnswered(q, respostas[q.id]))
   if (!pend.length) {
-    return `<div class="alert ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><div><strong>Tudo respondido.</strong> Você pode enviar o assessment.</div></div>`
+    return `<div class="alert ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><div><strong>Everything answered.</strong> You can submit the assessment.</div></div>`
   }
   return `<div class="alert warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><div>
-    <strong>${pend.length} pergunta(s) obrigatória(s) em branco.</strong>
+    <strong>${pend.length} required question(s) left blank.</strong>
     <div class="small" style="margin-top:6px">${pend
       .map((q) => `<a href="#q-${q.id}" data-jump="${q.id}">${esc(q.texto.slice(0, 70))}…</a>`)
       .join('<br>')}</div></div></div>`
@@ -356,7 +356,7 @@ function formScript(token: string, pendingCount: number): string {
     var st = document.querySelector('[data-status="'+qid+'"]');
     var ok = isFilled(qid, tipo, val);
     if (box) box.setAttribute('data-answered', ok ? '1' : '0');
-    if (st) st.innerHTML = ok ? '<i class="fa-solid fa-circle-check" style="color:#12805c" aria-label="Respondida"></i>' : '';
+    if (st) st.innerHTML = ok ? '<i class="fa-solid fa-circle-check" style="color:#12805c" aria-label="Answered"></i>' : '';
     progress();
   }
 
@@ -377,7 +377,7 @@ function formScript(token: string, pendingCount: number): string {
     var bar = document.getElementById('progress-bar');
     if (bar) bar.style.width = pct + '%';
     var txt = document.getElementById('progress-text');
-    if (txt) txt.textContent = done + ' de ' + total + ' perguntas respondidas';
+    if (txt) txt.textContent = done + ' of ' + total + ' questions answered';
     var pe = document.getElementById('progress-pct');
     if (pe) pe.textContent = pct + '%';
 
@@ -388,11 +388,11 @@ function formScript(token: string, pendingCount: number): string {
     var boxEl = document.getElementById('pending-box');
     if (boxEl) {
       if (!missing.length) {
-        boxEl.innerHTML = '<div class="alert ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><div><strong>Tudo respondido.</strong> Você pode enviar o assessment.</div></div>';
+        boxEl.innerHTML = '<div class="alert ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><div><strong>Everything answered.</strong> You can submit the assessment.</div></div>';
       } else {
         boxEl.innerHTML = '<div class="alert warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><div><strong>'
-          + missing.length + ' pergunta(s) obrigatória(s) em branco.</strong>'
-          + '<div class="small" style="margin-top:6px">Revise as seções anteriores — as pendências estão marcadas.</div></div></div>';
+          + missing.length + ' required question(s) left blank.</strong>'
+          + '<div class="small" style="margin-top:6px">Review the sections above — the outstanding items are marked.</div></div></div>';
       }
     }
     return missing.length;
@@ -416,7 +416,7 @@ function formScript(token: string, pendingCount: number): string {
     if (inFlight) { if (force) setTimeout(function(){ flush(true); }, 500); return Promise.resolve(); }
     inFlight = true;
     pendingQ = {}; pendingIni = {}; pendingTargets = {};
-    setState('saving', '<i class="fa-solid fa-circle-notch fa-spin"></i> salvando…');
+    setState('saving', '<i class="fa-solid fa-circle-notch fa-spin"></i> saving…');
     return fetch('/api/a/'+TOKEN+'/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -424,19 +424,19 @@ function formScript(token: string, pendingCount: number): string {
     }).then(function(r){
       if (!r.ok) throw new Error('http '+r.status);
       inFlight = false;
-      setState('saved', '<i class="fa-solid fa-circle-check"></i> salvo automaticamente');
+      setState('saved', '<i class="fa-solid fa-circle-check"></i> saved automatically');
       if (Object.keys(pendingQ).length || Object.keys(pendingIni).length || Object.keys(pendingTargets).length) flush(false);
     }).catch(function(){
       inFlight = false;
       p.respostas.forEach(function(r){ pendingQ[r.question_id] = r.valor; });
       if (p.targets) p.targets.forEach(function(t){ pendingTargets[t.dimensao] = t.meta; });
       if (p.iniciativas) p.iniciativas.forEach(function(x){ pendingIni[x.idx] = x; });
-      setState('error', '<i class="fa-solid fa-triangle-exclamation"></i> falha ao salvar — nova tentativa em instantes');
+      setState('error', '<i class="fa-solid fa-triangle-exclamation"></i> could not save — retrying shortly');
       setTimeout(function(){ flush(false); }, 3000);
     });
   }
 
-  function queue(){ clearTimeout(timer); timer = setTimeout(function(){ flush(false); }, 800); setState('saving', '<i class="fa-solid fa-pen"></i> alterações pendentes…'); }
+  function queue(){ clearTimeout(timer); timer = setTimeout(function(){ flush(false); }, 800); setState('saving', '<i class="fa-solid fa-pen"></i> unsaved changes…'); }
 
   document.addEventListener('change', function(ev){
     var el = ev.target;
@@ -508,18 +508,18 @@ function formScript(token: string, pendingCount: number): string {
       setTimeout(function(){
         if (missing > 0) {
           document.getElementById('revisao').scrollIntoView({ behavior:'smooth' });
-          setState('error', '<i class="fa-solid fa-triangle-exclamation"></i> ' + missing + ' pergunta(s) obrigatória(s) pendente(s)');
+          setState('error', '<i class="fa-solid fa-triangle-exclamation"></i> ' + missing + ' required question(s) outstanding');
           return;
         }
-        setState('saving', '<i class="fa-solid fa-circle-notch fa-spin"></i> gerando relatório…');
+        setState('saving', '<i class="fa-solid fa-circle-notch fa-spin"></i> generating report…');
         fetch('/api/a/'+TOKEN+'/submit', { method:'POST', headers: { 'Content-Type':'application/json' }, body: '{}' })
           .then(function(r){ return r.json().then(function(j){ return { status: r.status, body: j }; }); })
           .then(function(res){
             if (res.status === 200 && res.body.ok) { window.location.href = '/a/'+TOKEN+'/relatorio'; return; }
-            setState('error', '<i class="fa-solid fa-triangle-exclamation"></i> ' + (res.body.message || 'verifique as pendências'));
+            setState('error', '<i class="fa-solid fa-triangle-exclamation"></i> ' + (res.body.message || 'please check the outstanding items'));
             window.location.reload();
           })
-          .catch(function(){ setState('error', '<i class="fa-solid fa-triangle-exclamation"></i> falha no envio — tente novamente'); });
+          .catch(function(){ setState('error', '<i class="fa-solid fa-triangle-exclamation"></i> submission failed — please try again'); });
       }, 300);
     });
   }

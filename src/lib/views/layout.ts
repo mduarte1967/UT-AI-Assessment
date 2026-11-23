@@ -8,7 +8,7 @@ export type DocOptions = {
 
 export function doc({ title, bodyClass = '', head = '' }: DocOptions, ...body: string[]): string {
   return `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -29,10 +29,10 @@ ${body.join('\n')}
 }
 
 const NAV = [
-  { href: '/painel', icon: 'fa-gauge-high', label: 'Painel' },
-  { href: '/clientes/novo', icon: 'fa-user-plus', label: 'Novo cliente' },
-  { href: '/ajuda', icon: 'fa-circle-question', label: 'Como usar' },
-  { href: '/configuracoes', icon: 'fa-gear', label: 'Configurações' },
+  { href: '/painel', icon: 'fa-gauge-high', label: 'Dashboard' },
+  { href: '/clientes/novo', icon: 'fa-user-plus', label: 'New client' },
+  { href: '/ajuda', icon: 'fa-circle-question', label: 'How to use' },
+  { href: '/configuracoes', icon: 'fa-gear', label: 'Settings' },
 ]
 
 export type AdminShellOptions = {
@@ -53,13 +53,13 @@ export function adminShell(opts: AdminShellOptions, ...content: string[]): strin
 
   return doc(
     { title: opts.title },
-    `<a class="skip-link" href="#main">Ir para o conteúdo</a>
+    `<a class="skip-link" href="#main">Skip to content</a>
 <div class="shell">
   <aside class="sidebar">
     <div class="brand">
       <a href="/"><img src="/static/logo.png" alt="Unified Technologies"></a>
     </div>
-    <nav class="nav" aria-label="Navegação principal">
+    <nav class="nav" aria-label="Main navigation">
       <span class="nav-label">Assessment</span>
       ${nav}
     </nav>
@@ -73,7 +73,7 @@ export function adminShell(opts: AdminShellOptions, ...content: string[]): strin
       </div>
       <form method="post" action="/logout">
         <button class="btn btn-ghost btn-sm btn-block" type="submit" style="background:transparent;color:#c8d4ea;border-color:rgba(255,255,255,.18)">
-          <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sair
+          <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sign out
         </button>
       </form>
     </div>
@@ -99,8 +99,8 @@ export function publicHeader(backHref?: string, backLabel?: string): string {
   <img src="/static/logo.png" alt="Unified Technologies">
   ${
     backHref
-      ? `<a class="btn btn-ghost btn-sm" href="${backHref}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> ${esc(backLabel || 'Voltar')}</a>`
-      : `<span class="small muted">Assessment de Maturidade em IA</span>`
+      ? `<a class="btn btn-ghost btn-sm" href="${backHref}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> ${esc(backLabel || 'Back')}</a>`
+      : `<span class="small muted">AI Maturity Assessment</span>`
   }
 </header>`
 }

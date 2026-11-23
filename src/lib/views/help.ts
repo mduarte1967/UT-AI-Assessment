@@ -1,5 +1,5 @@
 import { esc } from '../util'
-import { adminShell, alertBox, badge } from './layout'
+import { adminShell, badge } from './layout'
 
 export type HelpOpts = {
   admin: { nome: string; email: string }
@@ -23,128 +23,128 @@ export function helpPage(o: HelpOpts): string {
   const conteudo = `
 <section class="card" style="margin-bottom:18px">
   <div class="card-head"><div>
-    <h2>Como usar o sistema — guia em 5 passos</h2>
-    <div class="sub">Do cadastro do cliente ao relatório entregue. Leva cerca de 5 minutos para o primeiro cliente.</div>
+    <h2>How to use the system — a 5-step guide</h2>
+    <div class="sub">From registering the client to delivering the report. The first client takes about 5 minutes.</div>
   </div></div>
 
   ${STEP(
     1,
-    'Entre como administrador',
-    `Acesse <span class="mono">/login</span> com o e-mail <strong>${esc(o.admin.email)}</strong>.
-     ${o.mailConfigured ? '' : 'A senha inicial é de primeiro acesso — troque em <a href="/configuracoes#acesso">Configurações</a>.'}
-     Não existe tela de cadastro de usuário: o administrador é o <strong>único perfil com login</strong>, criado automaticamente na primeira execução.
-     Se precisar de mais administradores, fale com o responsável técnico.`,
-    `<a class="btn btn-sm btn-ghost" href="/configuracoes#acesso">Alterar minha senha</a>`
+    'Sign in as administrator',
+    `Go to <span class="mono">/login</span> and use the e-mail <strong>${esc(o.admin.email)}</strong>.
+     ${o.mailConfigured ? '' : 'The initial password is a first-access one — change it under <a href="/configuracoes#acesso">Settings</a>.'}
+     There is no user sign-up screen: the administrator is the <strong>only profile with a login</strong>, created automatically on first run.
+     If you need more administrators, contact the application's technical owner.`,
+    `<a class="btn btn-sm btn-ghost" href="/configuracoes#acesso">Change my password</a>`
   )}
 
   ${STEP(
     2,
-    'Cadastre o cliente (e o e-mail de quem vai responder)',
-    `Em <strong>Novo cliente</strong>, informe razão social, vertical, porte e — o mais importante — o
-     <strong>nome e o e-mail do responsável</strong>. É para esse e-mail que o convite vai.
-     O sistema cria o assessment, gera um link único e (se o envio estiver configurado) dispara o e-mail na hora.
-     Sem envio configurado, o link aparece na tela com botão <em>Copiar</em> — você envia do seu e-mail corporativo.`,
-    `<a class="btn btn-sm" href="/clientes/novo"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Cadastrar cliente</a>
-     <a class="btn btn-sm btn-ghost" href="/configuracoes#email">Configurar envio de e-mail</a>`
+    'Register the client (and the e-mail of whoever will answer)',
+    `Under <strong>New client</strong>, provide the legal name, industry, company size and — most importantly — the
+     <strong>name and e-mail of the contact</strong>. That is the address the invitation goes to.
+     The system creates the assessment, generates a unique link and (if delivery is configured) sends the e-mail straight away.
+     Without delivery configured, the link appears on screen with a <em>Copy</em> button — you send it from your corporate mailbox.`,
+    `<a class="btn btn-sm" href="/clientes/novo"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Register client</a>
+     <a class="btn btn-sm btn-ghost" href="/configuracoes#email">Configure e-mail delivery</a>`
   )}
 
   ${STEP(
     3,
-    'Configure o envio de e-mail (uma vez só)',
-    `Em <a href="/configuracoes#email">Configurações → Envio de e-mail</a>, informe a chave de API do
-     Resend (recomendado) ou SendGrid, o remetente verificado e a validade do link (${o.ttlDays} dias).
-     Use o botão <em>Testar</em> para confirmar que o e-mail chega.
-     ${o.mailConfigured ? badge('Envio configurado', 'ok') : badge('Ainda não configurado', 'warn')}`
+    'Configure e-mail delivery (once)',
+    `Under <a href="/configuracoes#email">Settings → E-mail delivery</a>, enter the Resend API key (recommended) or SendGrid,
+     the verified sender and the link validity (${o.ttlDays} days).
+     Use the <em>Test</em> button to confirm the e-mail arrives.
+     ${o.mailConfigured ? badge('Delivery configured', 'ok') : badge('Not configured yet', 'warn')}`
   )}
 
   ${STEP(
     4,
-    'O cliente responde pelo link (sem senha)',
-    `O cliente abre o link no navegador, responde as 7 dimensões (~30 min) e as respostas são
-     <strong>salvas automaticamente</strong> — pode fechar e voltar depois, até enviar.
-     Na última etapa ele revisa as pendências, declara metas para 12 meses e até 5 iniciativas candidatas.`
+    'The client answers through the link (no password)',
+    `The client opens the link in the browser, answers the 7 dimensions (~30 min) and the responses are
+     <strong>saved automatically</strong> — they can close and come back later, until they submit.
+     In the last step they review outstanding items, declare 12-month targets and up to 5 candidate initiatives.`
   )}
 
   ${STEP(
     5,
-    'O relatório é gerado na hora',
-    `Ao enviar, o sistema calcula o índice, monta o quadro de resultados das 7 dimensões, o radar atual × meta,
-     as iniciativas priorizadas e o plano de 90 dias. O cliente vê e baixa em PDF/XLSX;
-     você acompanha tudo no <a href="/painel">Painel</a>, com exportação da base completa.
-     Para corrigir respostas depois do envio, use <em>Reabrir formulário</em> na ficha do cliente — isso gera uma nova versão do relatório e preserva a anterior.`,
-    `<a class="btn btn-sm btn-ghost" href="/painel"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Abrir o painel</a>`
+    'The report is generated immediately',
+    `On submit, the system calculates the index, builds the results table for the 7 dimensions, the current × target radar,
+     the prioritised initiatives and the 90-day plan. The client sees and downloads it as PDF/XLSX;
+     you follow everything on the <a href="/painel">Dashboard</a>, with a full base export.
+     To correct answers after submission, use <em>Reopen questionnaire</em> on the client record — that generates a new report version and preserves the previous one.`,
+    `<a class="btn btn-sm btn-ghost" href="/painel"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Open the dashboard</a>`
   )}
 </section>
 
 <div class="grid-2" style="align-items:start;gap:18px">
   <section class="card">
-    <div class="card-head"><div><h2>Perguntas frequentes</h2></div></div>
+    <div class="card-head"><div><h2>Frequently asked questions</h2></div></div>
     <div class="faq">
       <details open>
-        <summary>O cliente precisa criar conta ou senha?</summary>
-        <p>Não. O acesso é por um <strong>link único com token</strong> que expira em ${o.ttlDays} dias.
-        O link abre apenas o assessment daquela empresa. Quem tem o link responde; ninguém mais vê os dados.</p>
+        <summary>Does the client need to create an account or password?</summary>
+        <p>No. Access is through a <strong>unique tokenised link</strong> that expires in ${o.ttlDays} days.
+        The link opens only that company's assessment. Whoever holds the link answers; nobody else sees the data.</p>
       </details>
       <details>
-        <summary>Como troco o e-mail do destinatário?</summary>
-        <p>Na ficha do cliente, <em>Editar</em> e altere “Responsável → E-mail”. Depois use <em>Reenviar link</em>
-        para disparar um novo convite — o link anterior é invalidado automaticamente.</p>
+        <summary>How do I change the recipient's e-mail?</summary>
+        <p>On the client record, choose <em>Edit</em> and change “Contact → E-mail”. Then use <em>Resend link</em>
+        to send a new invitation — the previous link is invalidated automatically.</p>
       </details>
       <details>
-        <summary>O cliente perdeu o e-mail. E agora?</summary>
-        <p>Abra a ficha do cliente e clique em <em>Reenviar link</em>. Um novo token é gerado e o antigo deixa de funcionar.
-        Você também pode copiar o link e enviar por WhatsApp ou outro canal.</p>
+        <summary>The client lost the e-mail. Now what?</summary>
+        <p>Open the client record and click <em>Resend link</em>. A new token is generated and the old one stops working.
+        You can also copy the link and send it over any other channel.</p>
       </details>
       <details>
-        <summary>Posso corrigir respostas depois de enviado?</summary>
-        <p>Sim, com <em>Reabrir formulário</em>. O cliente volta a editar e, ao reenviar, é criada a versão v2 do relatório.
-        A v1 continua acessível no histórico — nada é sobrescrito.</p>
+        <summary>Can I correct answers after submission?</summary>
+        <p>Yes, using <em>Reopen questionnaire</em>. The client can edit again and, on resubmission, report version v2 is created.
+        v1 remains accessible in the history — nothing is overwritten.</p>
       </details>
       <details>
-        <summary>Excluir um cliente apaga os dados?</summary>
-        <p>Não. A exclusão é <strong>lógica</strong>: o cliente sai das listagens, mas clientes, respostas e relatórios
-        permanecem no banco para auditoria. A exportação em XLSX/CSV garante a portabilidade da base.</p>
+        <summary>Does deleting a client erase the data?</summary>
+        <p>No. Deletion is <strong>logical</strong>: the client disappears from the listings, but clients, responses and reports
+        remain in the database for auditing. The XLSX/CSV export guarantees portability of the base.</p>
       </details>
       <details>
-        <summary>O índice é calculado como?</summary>
-        <p>O nível de cada dimensão é o <strong>piso da média</strong> das respostas (sem arredondar para cima),
-        na escala L0–L4. O índice geral é a média das 7 dimensões, exibida em escala 0–5.
-        O gap é a meta declarada menos o nível atual, e a prioridade sai da matriz gap × urgência.</p>
+        <summary>How is the index calculated?</summary>
+        <p>Each dimension's level is the <strong>floor of the average</strong> of its answers (no rounding up),
+        on the L0–L4 scale. The overall index is the average of the 7 dimensions, shown on a 0–5 scale.
+        The gap is the declared target minus the current level, and priority comes from the gap × urgency matrix.</p>
       </details>
       <details>
-        <summary>Como exporto os dados?</summary>
-        <p>No painel: <em>Exportar XLSX</em> (4 abas: clientes, respostas, índices, iniciativas) ou
-        <span class="mono">/painel/export.csv</span>. Em cada relatório há exportação de PDF e XLSX do scorecard.</p>
+        <summary>How do I export the data?</summary>
+        <p>On the dashboard: <em>Export XLSX</em> (4 sheets: clients, responses, indexes, initiatives) or
+        <span class="mono">/painel/export.csv</span>. Every report also offers PDF and XLSX export of the results table.</p>
       </details>
     </div>
   </section>
 
   <section class="card">
-    <div class="card-head"><div><h2>Testar o fluxo agora</h2>
-      <div class="sub">Abra o link de um assessment existente para ver a experiência do cliente.</div></div></div>
+    <div class="card-head"><div><h2>Try the flow now</h2>
+      <div class="sub">Open an existing assessment link to see the client experience.</div></div></div>
     ${
       o.demoToken
         ? `<div class="link-box" style="margin-bottom:12px">
             <i class="fa-solid fa-link" aria-hidden="true"></i>
-            <input type="text" id="demo-link" value="${esc(o.baseUrl)}/a/${esc(o.demoToken)}" readonly aria-label="Link de teste">
-            <button class="btn btn-sm btn-ghost" type="button" data-copy="demo-link"><i class="fa-regular fa-copy" aria-hidden="true"></i> Copiar</button>
+            <input type="text" id="demo-link" value="${esc(o.baseUrl)}/a/${esc(o.demoToken)}" readonly aria-label="Test link">
+            <button class="btn btn-sm btn-ghost" type="button" data-copy="demo-link"><i class="fa-regular fa-copy" aria-hidden="true"></i> Copy</button>
           </div>
           <a class="btn btn-sm" href="/a/${esc(o.demoToken)}" target="_blank" rel="noopener">
-            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> Abrir o formulário do cliente
+            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> Open the client questionnaire
           </a>`
-        : `<p class="small muted">Nenhum cliente cadastrado ainda. Cadastre um cliente para gerar um link de teste.</p>`
+        : `<p class="small muted">No client registered yet. Register one to generate a test link.</p>`
     }
     <div class="divider"></div>
-    <h3 style="font-size:13px;margin-bottom:8px">Mapa do sistema</h3>
+    <h3 style="font-size:13px;margin-bottom:8px">System map</h3>
     <table class="data" style="font-size:12.5px">
       <tbody>
-        <tr><td class="mono">/login</td><td>Entrada do administrador</td></tr>
-        <tr><td class="mono">/painel</td><td>Indicadores, clientes e exportações</td></tr>
-        <tr><td class="mono">/clientes/novo</td><td>Cadastro + geração do link</td></tr>
-        <tr><td class="mono">/clientes/:id</td><td>Ficha, respostas, relatórios e ações</td></tr>
-        <tr><td class="mono">/a/:token</td><td>Formulário do cliente (sem login)</td></tr>
-        <tr><td class="mono">/a/:token/relatorio</td><td>Relatório do cliente (PDF/XLSX)</td></tr>
-        <tr><td class="mono">/configuracoes</td><td>Senha do admin e envio de e-mail</td></tr>
+        <tr><td class="mono">/login</td><td>Administrator sign-in</td></tr>
+        <tr><td class="mono">/painel</td><td>KPIs, clients and exports</td></tr>
+        <tr><td class="mono">/clientes/novo</td><td>Registration + link generation</td></tr>
+        <tr><td class="mono">/clientes/:id</td><td>Record, responses, reports and actions</td></tr>
+        <tr><td class="mono">/a/:token</td><td>Client questionnaire (no login)</td></tr>
+        <tr><td class="mono">/a/:token/relatorio</td><td>Client report (PDF/XLSX)</td></tr>
+        <tr><td class="mono">/configuracoes</td><td>Admin password and e-mail delivery</td></tr>
       </tbody>
     </table>
   </section>
@@ -158,7 +158,7 @@ export function helpPage(o: HelpOpts): string {
     if (!el) return;
     el.select();
     navigator.clipboard.writeText(el.value).then(function(){
-      var old = b.innerHTML; b.innerHTML = '<i class="fa-solid fa-check"></i> Copiado';
+      var old = b.innerHTML; b.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
       setTimeout(function(){ b.innerHTML = old; }, 1600);
     });
   });
@@ -166,11 +166,11 @@ export function helpPage(o: HelpOpts): string {
 
   return adminShell(
     {
-      title: 'Como usar',
-      subtitle: 'Guia da prática',
+      title: 'How to use',
+      subtitle: 'Practice guide',
       active: '/ajuda',
       admin: o.admin,
-      actions: `<a class="btn btn-sm" href="/clientes/novo"><i class="fa-solid fa-plus" aria-hidden="true"></i> Novo cliente</a>`,
+      actions: `<a class="btn btn-sm" href="/clientes/novo"><i class="fa-solid fa-plus" aria-hidden="true"></i> New client</a>`,
     },
     conteudo
   )

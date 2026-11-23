@@ -208,7 +208,7 @@ export function prioritizeInitiatives(
 
 export function defaultNextStep(dim: string | null, prioridade: string): string {
   const d = DIMENSIONS.find((x) => x.key === dim)
-  if (prioridade === 'Critical') return `Definir dono executivo e plano de 30 dias para elevar ${d?.nome ?? 'a dimensão crítica'}.`
-  if (prioridade === 'High') return `Formalizar escopo, baseline e KPI antes de escalar ${d?.nome ?? 'a iniciativa'}.`
-  return `Validar viabilidade técnica e patrocínio; entrar no próximo ciclo de priorização.`
+  if (prioridade === 'Critical') return `Assign an executive owner and a 30-day plan to raise ${d?.nome ?? 'the critical dimension'}.`
+  if (prioridade === 'High') return `Formalise scope, baseline and KPI before scaling ${d?.nome ?? 'the initiative'}.`
+  return `Validate technical feasibility and sponsorship; queue it for the next prioritisation cycle.`
 }

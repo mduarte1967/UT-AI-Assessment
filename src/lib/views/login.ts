@@ -5,7 +5,7 @@ import { doc } from './layout'
 export type LoginOpts = {
   error?: string
   email?: string
-  /** Credenciais padrão ainda ativas (primeiro acesso, nunca trocadas) */
+  /** Default credentials still active (first access, never changed) */
   firstAccess?: { email: string; senha: string } | null
   notice?: string
 }
@@ -18,14 +18,14 @@ export function loginPage(opts: LoginOpts = {}): string {
   const fa = opts.firstAccess
 
   return doc(
-    { title: 'Acesso do administrador', bodyClass: 'login-body' },
+    { title: 'Administrator sign-in', bodyClass: 'login-body' },
     `<div class="login-wrap">
   <aside class="login-hero">
     <div>
       <a href="/login" class="logo-chip"><img src="/static/logo.png" alt="Unified Technologies"></a>
-      <h1>Assessment de<br>Maturidade em IA</h1>
-      <p>Diagnóstico estruturado das sete dimensões de prontidão para inteligência artificial —
-      do cadastro do cliente ao relatório com notas por dimensão, radar e plano de 90 dias.</p>
+      <h1>AI Maturity<br>Assessment</h1>
+      <p>A structured diagnosis across the seven dimensions of AI readiness —
+      from client registration to a report with dimension scores, a radar chart and a 90-day plan.</p>
       <div class="hero-dims">${dims}</div>
     </div>
     <div class="hero-foot">Unified Technologies</div>
@@ -33,8 +33,8 @@ export function loginPage(opts: LoginOpts = {}): string {
 
   <section class="login-panel">
     <div class="login-box">
-      <h2>Acesso do administrador</h2>
-      <p class="lead">Área restrita à gestão da prática. Clientes acessam pelo link único enviado por e-mail.</p>
+      <h2>Administrator sign-in</h2>
+      <p class="lead">Restricted to practice management. Clients access through the unique link sent by e-mail.</p>
 
       ${
         opts.error
@@ -54,15 +54,15 @@ export function loginPage(opts: LoginOpts = {}): string {
       ${
         fa
           ? `<div class="first-access">
-              <strong><i class="fa-solid fa-key" aria-hidden="true"></i> Primeiro acesso</strong>
-              Esta aplicação não tem tela de cadastro: o administrador é criado automaticamente na
-              primeira execução, com as credenciais abaixo.
+              <strong><i class="fa-solid fa-key" aria-hidden="true"></i> First access</strong>
+              This application has no sign-up screen: the administrator account is created automatically on
+              first run, with the credentials below.
               <dl>
                 <dt>E-mail</dt><dd><code>${esc(fa.email)}</code></dd>
-                <dt>Senha</dt><dd><code>${esc(fa.senha)}</code></dd>
+                <dt>Password</dt><dd><code>${esc(fa.senha)}</code></dd>
               </dl>
-              <div class="tip">Entre com esses dados e troque a senha em <strong>Configurações</strong>.
-              Este aviso desaparece assim que a senha for alterada.</div>
+              <div class="tip">Sign in with these details and change the password under <strong>Settings</strong>.
+              This notice disappears as soon as the password is changed.</div>
             </div>`
           : ''
       }
@@ -73,20 +73,20 @@ export function loginPage(opts: LoginOpts = {}): string {
           <input type="email" id="email" name="email" value="${esc(opts.email || fa?.email || '')}" autocomplete="username" required ${fa ? '' : 'autofocus'}>
         </div>
         <div class="field">
-          <label for="senha">Senha</label>
+          <label for="senha">Password</label>
           <input type="password" id="senha" name="senha" autocomplete="current-password" required ${fa ? 'autofocus' : ''}>
         </div>
-        <button class="btn btn-block" type="submit">Entrar</button>
+        <button class="btn btn-block" type="submit">Sign in</button>
       </form>
 
       <p class="small muted" style="margin-top:18px">
-        Esqueceu a senha? Peça a redefinição ao responsável técnico da aplicação —
-        o envio automatizado de recuperação entra na próxima fase.
+        Forgot your password? Ask the application's technical owner for a reset —
+        automated recovery is planned for the next phase.
       </p>
       <div class="divider"></div>
       <p class="small muted">
-        <strong>É cliente?</strong> Você não precisa de senha: use exatamente o link recebido por e-mail —
-        ele abre o formulário da sua empresa.
+        <strong>Are you a client?</strong> You do not need a password: just use the exact link you received by e-mail —
+        it opens your company's questionnaire.
       </p>
     </div>
   </section>

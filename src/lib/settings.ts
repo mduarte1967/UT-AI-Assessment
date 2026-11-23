@@ -6,9 +6,9 @@ export const DEFAULTS: Settings = {
   mail_provider: 'resend',
   mail_from: 'Unified Technologies <onboarding@resend.dev>',
   link_ttl_days: '30',
-  mail_subject: 'Convite — Assessment de Maturidade em IA · {{empresa}}',
+  mail_subject: 'Invitation — AI Maturity Assessment · {{empresa}}',
   mail_intro:
-    'A Unified Technologies preparou o assessment de prontidão em inteligência artificial de {{empresa}}. São 7 dimensões e cerca de 20 perguntas — tempo estimado de 30 minutos, em uma sessão única.',
+    'Unified Technologies has prepared the artificial intelligence readiness assessment for {{empresa}}. It covers 7 dimensions and around 20 questions — an estimated 30 minutes, in a single session.',
   admin_password_changed: '',
 }
 
@@ -26,7 +26,7 @@ export async function getSetting(db: D1Database, key: string, fallback = ''): Pr
   return row?.value ?? fallback
 }
 
-export async function setSetting(db: D1Database, key: string, value: string, ator = 'sistema'): Promise<void> {
+export async function setSetting(db: D1Database, key: string, value: string, ator = 'system'): Promise<void> {
   const agora = new Date().toISOString()
   await db
     .prepare(
@@ -38,7 +38,7 @@ export async function setSetting(db: D1Database, key: string, value: string, ato
     .run()
 }
 
-/** Chave de e-mail: prioriza o que o administrador salvou na tela de configurações. */
+/** E-mail key: prefers whatever the administrator saved on the settings screen. */
 export async function mailConfig(env: Env, db: D1Database) {
   const s = await getSettings(db)
   const key = s.mail_api_key || env.RESEND_API_KEY || ''
@@ -60,7 +60,7 @@ export async function linkTtlDays(env: Env, db: D1Database): Promise<number> {
   return Number.isFinite(n) && n > 0 ? Math.min(365, Math.round(n)) : 30
 }
 
-/** Verdadeiro enquanto o administrador ainda usa a senha padrão de primeiro acesso. */
+/** True while the administrator is still using the default first-access password. */
 export async function defaultCredsActive(db: D1Database): Promise<{ active: boolean; email: string | null }> {
   const changed = await getSetting(db, 'admin_password_changed', '')
   if (changed === '1') return { active: false, email: null }

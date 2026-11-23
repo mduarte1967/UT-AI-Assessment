@@ -18,133 +18,133 @@ export function settingsPage(s: Settings, admin: { nome: string; email: string }
 
   return adminShell(
     {
-      title: 'Configurações',
-      subtitle: 'Administração do sistema',
+      title: 'Settings',
+      subtitle: 'System administration',
       active: '/configuracoes',
       admin,
-      actions: `<a class="btn btn-ghost btn-sm" href="/ajuda"><i class="fa-regular fa-circle-question" aria-hidden="true"></i> Como usar</a>`,
+      actions: `<a class="btn btn-ghost btn-sm" href="/ajuda"><i class="fa-regular fa-circle-question" aria-hidden="true"></i> How to use</a>`,
     },
     opts.flash ? alertBox(opts.flash.kind, esc(opts.flash.text)) : '',
 
     opts.defaultPasswordActive
       ? alertBox(
           'warn',
-          `<strong>Você ainda está com a senha padrão de primeiro acesso.</strong> Defina uma senha própria no bloco “Acesso do administrador” abaixo, antes de colocar a aplicação em produção.`
+          `<strong>You are still using the default first-access password.</strong> Set your own password in the “Administrator access” block below before putting the application into production.`
         )
       : '',
 
     `<div class="grid-2" style="align-items:start;gap:18px">
       <section class="card" id="acesso">
         <div class="card-head"><div>
-          <h2><i class="fa-solid fa-key" aria-hidden="true"></i> Acesso do administrador</h2>
-          <div class="sub">Único perfil com login. Os clientes entram por link, sem senha.</div>
+          <h2><i class="fa-solid fa-key" aria-hidden="true"></i> Administrator access</h2>
+          <div class="sub">The only profile with a login. Clients enter through a link, without a password.</div>
         </div></div>
 
         <form method="post" action="/configuracoes/acesso" novalidate>
           <div class="field">
-            <label for="nome">Nome</label>
+            <label for="nome">Name</label>
             <input type="text" id="nome" name="nome" value="${esc(admin.nome)}" maxlength="120" required>
           </div>
           <div class="field">
-            <label for="email">E-mail de acesso</label>
+            <label for="email">Sign-in e-mail</label>
             <input type="email" id="email" name="email" value="${esc(admin.email)}" maxlength="160" required>
           </div>
           <div class="divider"></div>
           <div class="field">
-            <label for="senha_atual">Senha atual <span class="req">*</span></label>
+            <label for="senha_atual">Current password <span class="req">*</span></label>
             <input type="password" id="senha_atual" name="senha_atual" autocomplete="current-password" required>
-            <span class="hint">Necessária para confirmar qualquer alteração neste bloco.</span>
+            <span class="hint">Required to confirm any change in this block.</span>
           </div>
           <div class="grid-2">
             <div class="field">
-              <label for="senha_nova">Nova senha</label>
-              <input type="password" id="senha_nova" name="senha_nova" autocomplete="new-password" minlength="8" placeholder="mínimo 8 caracteres">
+              <label for="senha_nova">New password</label>
+              <input type="password" id="senha_nova" name="senha_nova" autocomplete="new-password" minlength="8" placeholder="at least 8 characters">
             </div>
             <div class="field">
-              <label for="senha_conf">Confirmar nova senha</label>
+              <label for="senha_conf">Confirm new password</label>
               <input type="password" id="senha_conf" name="senha_conf" autocomplete="new-password" minlength="8">
             </div>
           </div>
-          <button class="btn" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Salvar acesso</button>
-          <span class="small muted" style="margin-left:10px">Deixe a nova senha em branco para alterar apenas nome/e-mail.</span>
+          <button class="btn" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save access</button>
+          <span class="small muted" style="margin-left:10px">Leave the new password blank to change only name/e-mail.</span>
         </form>
       </section>
 
       <section class="card" id="email">
         <div class="card-head"><div>
-          <h2><i class="fa-solid fa-envelope" aria-hidden="true"></i> Envio de e-mail</h2>
-          <div class="sub">Convite e reenvio do link do assessment para o responsável.</div>
+          <h2><i class="fa-solid fa-envelope" aria-hidden="true"></i> E-mail delivery</h2>
+          <div class="sub">Invitation and link resend to the client's contact.</div>
         </div>
-        ${opts.mailConfigured ? badge('Configurado', 'ok') : badge('Não configurado', 'warn')}</div>
+        ${opts.mailConfigured ? badge('Configured', 'ok') : badge('Not configured', 'warn')}</div>
 
         ${
           opts.mailConfigured
             ? ''
             : alertBox(
                 'info',
-                `Sem chave de API, o sistema <strong>não envia e-mail</strong> — ao cadastrar um cliente, o link aparece na tela com botão <em>Copiar</em> para você enviar manualmente pelo seu e-mail corporativo. Para automatizar, informe a chave abaixo.`
+                `Without an API key the system <strong>does not send e-mail</strong> — when you register a client the link appears on screen with a <em>Copy</em> button so you can send it manually from your corporate mailbox. To automate it, enter the key below.`
               )
         }
 
         <form method="post" action="/configuracoes/email" novalidate>
           <div class="field">
-            <label for="mail_provider">Provedor</label>
+            <label for="mail_provider">Provider</label>
             <select id="mail_provider" name="mail_provider">
-              <option value="resend" ${s.mail_provider === 'resend' ? 'selected' : ''}>Resend (recomendado)</option>
+              <option value="resend" ${s.mail_provider === 'resend' ? 'selected' : ''}>Resend (recommended)</option>
               <option value="sendgrid" ${s.mail_provider === 'sendgrid' ? 'selected' : ''}>SendGrid</option>
             </select>
           </div>
           <div class="field">
-            <label for="mail_api_key">Chave de API</label>
+            <label for="mail_api_key">API key</label>
             <input type="password" id="mail_api_key" name="mail_api_key" autocomplete="off"
-              placeholder="${keySet ? '•••••••••••••  (salva — deixe em branco para manter)' : 're_xxxxxxxxxxxxxxxx'}">
-            <span class="hint">${keySet ? 'Chave já salva. Preencha apenas se quiser substituí-la.' : 'Resend: crie em resend.com/api-keys. SendGrid: sigla SG.…'}</span>
+              placeholder="${keySet ? '•••••••••••••  (saved — leave blank to keep)' : 're_xxxxxxxxxxxxxxxx'}">
+            <span class="hint">${keySet ? 'A key is already saved. Fill this in only to replace it.' : 'Resend: create one at resend.com/api-keys. SendGrid: starts with SG.…'}</span>
           </div>
           <div class="field">
-            <label for="mail_from">Remetente (from)</label>
+            <label for="mail_from">Sender (from)</label>
             <input type="text" id="mail_from" name="mail_from" value="${esc(s.mail_from)}" maxlength="160">
-            <span class="hint">Precisa ser um domínio verificado no provedor. No Resend, use <span class="mono">onboarding@resend.dev</span> para testar.</span>
+            <span class="hint">Must be a domain verified with the provider. On Resend, use <span class="mono">onboarding@resend.dev</span> for testing.</span>
           </div>
           <div class="field">
-            <label for="mail_subject">Assunto do convite</label>
+            <label for="mail_subject">Invitation subject</label>
             <input type="text" id="mail_subject" name="mail_subject" value="${esc(s.mail_subject)}" maxlength="180">
-            <span class="hint">Variável disponível: <span class="mono">{{empresa}}</span></span>
+            <span class="hint">Available variable: <span class="mono">{{empresa}}</span></span>
           </div>
           <div class="field">
-            <label for="mail_intro">Texto de abertura do convite</label>
+            <label for="mail_intro">Invitation opening text</label>
             <textarea id="mail_intro" name="mail_intro" rows="4" maxlength="900">${esc(s.mail_intro)}</textarea>
-            <span class="hint">Variáveis: <span class="mono">{{empresa}}</span>, <span class="mono">{{responsavel}}</span></span>
+            <span class="hint">Variables: <span class="mono">{{empresa}}</span>, <span class="mono">{{responsavel}}</span></span>
           </div>
           <div class="field" style="max-width:220px">
-            <label for="link_ttl_days">Validade do link (dias)</label>
+            <label for="link_ttl_days">Link validity (days)</label>
             <input type="number" id="link_ttl_days" name="link_ttl_days" min="1" max="365" value="${esc(s.link_ttl_days)}">
           </div>
-          <button class="btn" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Salvar configurações</button>
+          <button class="btn" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save settings</button>
         </form>
 
         <div class="divider"></div>
-        <h3 style="font-size:13px;margin-bottom:8px">Testar envio</h3>
+        <h3 style="font-size:13px;margin-bottom:8px">Send a test</h3>
         <form method="post" action="/configuracoes/testar" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
           <div class="field" style="flex:1;min-width:220px;margin:0">
-            <label for="teste_email">Enviar e-mail de teste para</label>
+            <label for="teste_email">Send a test e-mail to</label>
             <input type="email" id="teste_email" name="teste_email" value="${esc(admin.email)}" required>
           </div>
-          <button class="btn btn-ghost" type="submit"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Testar</button>
+          <button class="btn btn-ghost" type="submit"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Test</button>
         </form>
       </section>
     </div>
 
     <section class="card" style="margin-top:18px">
-      <div class="card-head"><div><h2>Como o e-mail do cliente funciona</h2>
-        <div class="sub">O cliente <strong>não</strong> cria conta. Ele recebe um link único.</div></div></div>
+      <div class="card-head"><div><h2>How the client e-mail works</h2>
+        <div class="sub">The client does <strong>not</strong> create an account. They receive a unique link.</div></div></div>
       <ol class="small" style="margin:0;padding-left:20px;line-height:1.9">
-        <li>Você cadastra o cliente informando o <strong>e-mail do responsável</strong> (o respondente).</li>
-        <li>O sistema cria o assessment e gera um <strong>link único</strong> com validade de ${esc(s.link_ttl_days)} dias.</li>
-        <li>Com chave de API configurada, o convite é <strong>enviado automaticamente</strong>; sem chave, o link aparece na tela para você copiar e enviar do seu e-mail.</li>
-        <li>O cliente abre o link, responde em ~30 minutos e recebe o relatório na hora — sem login.</li>
-        <li>Para trocar o destinatário: edite o cliente. Para gerar outro link: <em>Reenviar link</em> na ficha (o anterior é invalidado).</li>
+        <li>You register the client, providing the <strong>contact e-mail</strong> (the person who will answer).</li>
+        <li>The system creates the assessment and generates a <strong>unique link</strong> valid for ${esc(s.link_ttl_days)} days.</li>
+        <li>With an API key configured, the invitation is <strong>sent automatically</strong>; without a key, the link appears on screen so you can copy it and send it from your own mailbox.</li>
+        <li>The client opens the link, answers in ~30 minutes and gets the report immediately — no login.</li>
+        <li>To change the recipient: edit the client. To generate another link: <em>Resend link</em> on the client record (the previous one is invalidated).</li>
       </ol>
-      <div class="small muted" style="margin-top:10px">Última atualização das configurações: ${esc(fmtDateTime(s.atualizado_em || new Date().toISOString()))}</div>
+      <div class="small muted" style="margin-top:10px">Settings last updated: ${esc(fmtDateTime(s.atualizado_em || new Date().toISOString()))}</div>
     </section>`
   )
 }

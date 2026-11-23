@@ -31,7 +31,34 @@ export type ClientRow = {
 
 let seedPromise: Promise<void> | null = null
 
-/** Garante schema-base (produção) + perguntas v1 + admin inicial. Idempotente. */
+/** Bump when the seeded content changes (e.g. language of the question bank). */
+const SEED_VERSION = '2'
+
+/** Legacy Portuguese option values written by v1 of the app, mapped to the English labels. */
+const LEGACY_VERTICAIS: Record<string, string> = {
+  'Saúde': 'Healthcare',
+  'Financeiro': 'Financial services',
+  'Varejo': 'Retail',
+  'Indústria': 'Manufacturing',
+  'Tecnologia': 'Technology',
+  'Educação': 'Education',
+  'Logística': 'Logistics',
+  'Energia': 'Energy',
+  'Serviços': 'Services',
+  'Setor público': 'Public sector',
+  'Outro': 'Other',
+}
+
+const LEGACY_PORTES: Record<string, string> = {
+  '1 a 50 funcionários': '1 to 50 employees',
+  '51 a 200 funcionários': '51 to 200 employees',
+  '201 a 500 funcionários': '201 to 500 employees',
+  '501 a 1.000 funcionários': '501 to 1,000 employees',
+  '1.001 a 5.000 funcionários': '1,001 to 5,000 employees',
+  'Mais de 5.000 funcionários': 'More than 5,000 employees',
+}
+
+/** Ensures the base schema (production) + v1 questions + initial admin. Idempotent. */
 export async function ensureSeed(env: Env): Promise<void> {
   if (seedPromise) return seedPromise
   seedPromise = (async () => {
@@ -41,49 +68,85 @@ export async function ensureSeed(env: Env): Promise<void> {
       .first<{ value: string }>()
       .catch(() => null)
 
-    if (marker?.value === '1') return
+    if (marker?.value === SEED_VERSION) return
 
-    // Perguntas v1
-    const existing = await db
-      .prepare('SELECT COUNT(*) AS n FROM questions WHERE versao = 1')
-      .first<{ n: number }>()
-    if (!existing || Number(existing.n) === 0) {
-      const stmt = db.prepare(
-        `INSERT OR IGNORE INTO questions
-          (slug, versao, dimensao, ordem, texto, tipo, opcoes, obrigatoria, rubrica, ajuda, ativo)
-         VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
-      )
-      const batch = QUESTIONS.map((q) =>
-        stmt.bind(
-          q.slug,
-          q.dimensao,
-          q.ordem,
-          q.texto,
-          q.tipo,
-          q.opcoes ? JSON.stringify(q.opcoes) : null,
-          q.obrigatoria ? 1 : 0,
-          q.rubrica ? JSON.stringify(q.rubrica) : null,
-          q.ajuda
-        )
-      )
-      for (let i = 0; i < batch.length; i += 20) {
-        await db.batch(batch.slice(i, i + 20))
-      }
+    // Question bank: upsert by slug so existing question ids — and therefore
+    // already collected responses — stay valid when the wording changes.
+    const { results: existingRows } = await db
+      .prepare('SELECT id, slug FROM questions WHERE versao = 1')
+      .all<{ id: number; slug: string }>()
+    const existingBySlug = new Map((existingRows || []).map((r) => [r.slug, r.id]))
+
+    const insStmt = db.prepare(
+      `INSERT OR IGNORE INTO questions
+        (slug, versao, dimensao, ordem, texto, tipo, opcoes, obrigatoria, rubrica, ajuda, ativo)
+       VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
+    )
+    const updStmt = db.prepare(
+      `UPDATE questions
+          SET dimensao = ?, ordem = ?, texto = ?, tipo = ?, opcoes = ?,
+              obrigatoria = ?, rubrica = ?, ajuda = ?, ativo = 1
+        WHERE versao = 1 AND slug = ?`
+    )
+
+    const batch = QUESTIONS.map((q) => {
+      const opcoes = q.opcoes ? JSON.stringify(q.opcoes) : null
+      const rubrica = q.rubrica ? JSON.stringify(q.rubrica) : null
+      const obrigatoria = q.obrigatoria ? 1 : 0
+      return existingBySlug.has(q.slug)
+        ? updStmt.bind(q.dimensao, q.ordem, q.texto, q.tipo, opcoes, obrigatoria, rubrica, q.ajuda ?? null, q.slug)
+        : insStmt.bind(q.slug, q.dimensao, q.ordem, q.texto, q.tipo, opcoes, obrigatoria, rubrica, q.ajuda ?? null)
+    })
+    for (let i = 0; i < batch.length; i += 20) {
+      await db.batch(batch.slice(i, i + 20))
     }
 
-    // Administrador inicial
+    // Initial administrator
     const admins = await db.prepare('SELECT COUNT(*) AS n FROM admin_users').first<{ n: number }>()
     if (!admins || Number(admins.n) === 0) {
       const email = env.ADMIN_EMAIL || 'admin@unifiedtech.com'
       const senha = env.ADMIN_PASSWORD || 'Unified@2026'
       await db
         .prepare('INSERT INTO admin_users (nome, email, senha_hash) VALUES (?, ?, ?)')
-        .bind('Administrador da Prática', email, await hashPassword(senha))
+        .bind('Practice Administrator', email, await hashPassword(senha))
         .run()
     }
 
+    // Translate client attributes captured while the app was in Portuguese.
+    for (const [pt, en] of Object.entries(LEGACY_VERTICAIS)) {
+      await db.prepare('UPDATE clients SET vertical = ? WHERE vertical = ?').bind(en, pt).run()
+    }
+    for (const [pt, en] of Object.entries(LEGACY_PORTES)) {
+      await db.prepare('UPDATE clients SET tamanho_faixa = ? WHERE tamanho_faixa = ?').bind(en, pt).run()
+    }
+
+    // Translate stored settings that still hold the Portuguese defaults.
     await db
-      .prepare("INSERT INTO settings (key, value) VALUES ('seed_version', '1') ON CONFLICT(key) DO UPDATE SET value = '1'")
+      .prepare(
+        `UPDATE settings SET value = ?
+          WHERE key = 'mail_subject' AND value LIKE 'Convite —%'`
+      )
+      .bind('Invitation — AI Maturity Assessment · {{empresa}}')
+      .run()
+    await db
+      .prepare(
+        `UPDATE settings SET value = ?
+          WHERE key = 'mail_intro' AND value LIKE 'A Unified Technologies preparou%'`
+      )
+      .bind(
+        'Unified Technologies has prepared the artificial intelligence readiness assessment for {{empresa}}. It covers 7 dimensions and around 20 questions — an estimated 30 minutes, in a single session.'
+      )
+      .run()
+    await db
+      .prepare("UPDATE admin_users SET nome = 'Practice Administrator' WHERE nome = 'Administrador da Prática'")
+      .run()
+
+    await db
+      .prepare(
+        `INSERT INTO settings (key, value) VALUES ('seed_version', ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+      )
+      .bind(SEED_VERSION)
       .run()
   })()
   return seedPromise

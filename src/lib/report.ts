@@ -2,7 +2,7 @@ import { DIMENSIONS, DIM_MAP, LEVEL_LABELS, LEVEL_DESC, suggestionsFor } from '.
 import type { ScoreRow } from './scoring'
 import { computeIndex, computeScorecard, prioritizeInitiatives, defaultNextStep, sortByPriority } from './scoring'
 import type { QRow } from './scoring'
-import { esc, formatIndex, prioridadePt, formatPct, fmtDate, fmtDateTime } from './util'
+import { esc, formatIndex, prioridadePt, fmtDate, fmtDateTime } from './util'
 
 export type ReportInput = {
   client: {
@@ -93,25 +93,24 @@ export function buildReportData(input: ReportInput): ReportData {
   const plano: ReportData['plano'] = [
     {
       horizon: '1-30',
-      label: 'Primeiros 30 dias',
-      sub: 'Fundação: resolver bloqueios e provar valor',
+      label: 'First 30 days',
+      sub: 'Foundation: remove blockers and prove value',
       itens: iniciativas.filter((i) => i.horizonte === '1-30'),
     },
     {
       horizon: '31-60',
-      label: 'Dias 31 a 60',
-      sub: 'Escala controlada e formalização',
+      label: 'Days 31 to 60',
+      sub: 'Controlled scaling and formalisation',
       itens: iniciativas.filter((i) => i.horizonte === '31-60'),
     },
     {
       horizon: '61-90',
-      label: 'Dias 61 a 90',
-      sub: 'Consolidação e medição de valor',
+      label: 'Days 61 to 90',
+      sub: 'Consolidation and value measurement',
       itens: iniciativas.filter((i) => i.horizonte === '61-90'),
     },
   ]
 
-  const ordered = sortByPriority(scorecard)
   const criticas = scorecard.filter((r) => r.prioridade === 'Critical')
 
   return {
@@ -131,7 +130,7 @@ export function buildReportData(input: ReportInput): ReportData {
   }
 }
 
-/* ── SVG: radar atual × meta ─────────────────────────────────────────────── */
+/* ── SVG: current × target radar ────────────────────────────────────────── */
 export function radarSvg(rows: ScoreRow[], size = 420): string {
   const cx = size / 2
   const cy = size / 2
@@ -187,7 +186,7 @@ export function radarSvg(rows: ScoreRow[], size = 420): string {
     })
     .join('')
 
-  return `<svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:${size}px" role="img" aria-label="Radar de maturidade por dimensão, atual versus meta">
+  return `<svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:${size}px" role="img" aria-label="Maturity radar by dimension, current versus target">
   ${rings}${axes}${scaleLabels}
   <polygon points="${targetPoly}" fill="rgba(168,212,50,0.16)" stroke="#8ab520" stroke-width="2" stroke-dasharray="6 4"/>
   <polygon points="${currentPoly}" fill="rgba(8,0,72,0.22)" stroke="#080048" stroke-width="2"/>
@@ -201,7 +200,7 @@ export function gaugeSvg(escala5: number, size = 190): string {
   const c = 2 * Math.PI * r
   const pct = Math.max(0, Math.min(1, escala5 / 5))
   const dash = c * pct
-  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Índice geral ${formatIndex(escala5)} de 5">
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Overall index ${formatIndex(escala5)} out of 5">
   <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e8eef7" stroke-width="${stroke}"/>
   <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#080048" stroke-width="${stroke}"
     stroke-linecap="round" stroke-dasharray="${dash.toFixed(1)} ${(c - dash).toFixed(1)}"
@@ -213,7 +212,7 @@ export function gaugeSvg(escala5: number, size = 190): string {
 function bar(atual: number, meta: number): string {
   const w = (atual / 4) * 100
   const m = (meta / 4) * 100
-  return `<div class="mini-bar" role="img" aria-label="Atual L${atual} de meta L${meta}">
+  return `<div class="mini-bar" role="img" aria-label="Current L${atual} against target L${meta}">
     <i style="width:${w}%"></i><b style="left:${Math.min(99, m)}%"></b>
   </div>`
 }
@@ -224,7 +223,7 @@ export function scorecardTable(rows: ScoreRow[], opts: { admin?: boolean } = {})
       (r) => `<tr>
       <td>
         <div class="dim">${esc(r.nome)}</div>
-        ${r.confianca === 'reduzida' ? `<span class="badge warn" style="margin-top:3px">Confiança reduzida · ${r.respondidas}/${r.total}</span>` : ''}
+        ${r.confianca === 'reduzida' ? `<span class="badge warn" style="margin-top:3px">Reduced confidence · ${r.respondidas}/${r.total}</span>` : ''}
       </td>
       <td style="min-width:120px">${bar(r.atual, r.meta)}</td>
       <td class="num">${r.atual === 0 ? '<span class="lvl-chip l0">L0</span>' : `<span class="lvl-chip l${r.atual}">L${r.atual}</span>`}</td>
@@ -240,15 +239,15 @@ export function scorecardTable(rows: ScoreRow[], opts: { admin?: boolean } = {})
   return `<div class="table-wrap" style="border:0">
   <table class="scorecard">
     <thead><tr>
-      <th>Dimensão</th><th>Progresso (atual × meta)</th>
-      <th class="num">Atual</th><th class="num">Meta 12m</th><th class="num">Lacuna</th><th>Prioridade</th>
+      <th>Dimension</th><th>Progress (current × target)</th>
+      <th class="num">Current</th><th class="num">12m target</th><th class="num">Gap</th><th>Priority</th>
     </tr></thead>
     <tbody>${body}</tbody>
   </table>
 </div>`
 }
 
-/* ── Relatório completo (HTML) ──────────────────────────────────────────── */
+/* ── Full report (HTML) ─────────────────────────────────────────────────── */
 export type ReportRender = {
   input: ReportInput
   data: ReportData
@@ -265,56 +264,56 @@ export function renderReport(r: ReportRender): string {
 
   const capa = `<header class="rp-cover" id="capa">
     <img src="/static/logo.png" alt="Unified Technologies">
-    <div class="eyebrow">Assessment de Maturidade em IA</div>
-    <h1>Relatório de prontidão para inteligência artificial</h1>
+    <div class="eyebrow">AI Maturity Assessment</div>
+    <h1>Artificial intelligence readiness report</h1>
     <div class="who">${esc(empresa)} · ${esc(c.razao_social)}</div>
     <div class="cover-meta">
-      <div><strong>${esc(formatIndex(data.indice.escala5))}/5</strong>Índice de maturidade</div>
-      <div><strong>${esc(c.vertical || 'Não informado')}</strong>Vertical</div>
-      <div><strong>${esc(c.tamanho_faixa || 'Não informado')}</strong>Porte</div>
-      <div><strong>${esc(c.responsavel_nome)}</strong>Responsável</div>
-      <div><strong>v${r.versao}</strong>Versão do relatório</div>
-      <div><strong>${esc(fmtDate(data.geradoEm))}</strong>Emissão</div>
+      <div><strong>${esc(formatIndex(data.indice.escala5))}/5</strong>Maturity index</div>
+      <div><strong>${esc(c.vertical || 'Not provided')}</strong>Industry</div>
+      <div><strong>${esc(c.tamanho_faixa || 'Not provided')}</strong>Company size</div>
+      <div><strong>${esc(c.responsavel_nome)}</strong>Contact</div>
+      <div><strong>v${r.versao}</strong>Report version</div>
+      <div><strong>${esc(fmtDate(data.geradoEm))}</strong>Issued</div>
     </div>
   </header>`
 
   const resumo = `<section class="card" id="resumo" style="margin-bottom:18px">
     <div class="card-head"><div>
-      <h2>Resumo executivo</h2>
-      <div class="sub">Índice geral e leitura do estágio atual da organização</div>
+      <h2>Executive summary</h2>
+      <div class="sub">Overall index and a reading of the organisation's current stage</div>
     </div>
-    <span class="badge lime">${data.indice.escala5 >= 3 ? 'Avançado' : data.indice.escala5 >= 2 ? 'Em consolidação' : 'Fase inicial'}</span></div>
+    <span class="badge lime">${data.indice.escala5 >= 3 ? 'Advanced' : data.indice.escala5 >= 2 ? 'Consolidating' : 'Early stage'}</span></div>
     <div class="rp-index">
       <div class="gauge">
         ${gaugeSvg(data.indice.escala5)}
-        <div class="center"><div class="v">${formatIndex(data.indice.escala5)}</div><div class="u">de 5,0</div></div>
+        <div class="center"><div class="v">${formatIndex(data.indice.escala5)}</div><div class="u">out of 5.0</div></div>
       </div>
       <div>
-        <p><strong>${esc(empresa)}</strong> apresenta índice de maturidade em IA de <strong>${formatIndex(
+        <p><strong>${esc(empresa)}</strong> shows an AI maturity index of <strong>${formatIndex(
           data.indice.escala5
-        )}/5</strong>, correspondente a um nível médio <strong>L${formatIndex(
+        )}/5</strong>, corresponding to an average level of <strong>L${formatIndex(
           data.indice.media4
-        )}</strong> na escala L0–L4 do método (média simples das sete dimensões).</p>
+        )}</strong> on the method's L0–L4 scale (simple average of the seven dimensions).</p>
         ${
           data.objetivo
-            ? `<p class="small muted" style="margin-top:-4px">Objetivo declarado para 12 meses: <em>“${esc(data.objetivo)}”</em></p>`
+            ? `<p class="small muted" style="margin-top:-4px">Objective declared for the next 12 months: <em>“${esc(data.objetivo)}”</em></p>`
             : ''
         }
         <p class="small">
           ${
             data.destaques.criticas.length
-              ? `<strong>${data.destaques.criticas.length}</strong> dimensão(ões) em prioridade crítica: ${data.destaques.criticas
+              ? `<strong>${data.destaques.criticas.length}</strong> dimension(s) at critical priority: ${data.destaques.criticas
                   .map((d) => esc(d.short))
-                  .join(', ')}. Essas frentes condicionam as demais iniciativas do plano.`
-              : 'Nenhuma dimensão em prioridade crítica — o foco deve ser fechar os gaps de maior amplitude.'
+                  .join(', ')}. These fronts gate the remaining initiatives in the plan.`
+              : 'No dimension at critical priority — the focus should be on closing the widest gaps.'
           }
-          ${data.confiancaReduzida.length ? ` ${data.confiancaReduzida.length} dimensão(ões) com evidência parcial (selo de confiança reduzida).` : ''}
+          ${data.confiancaReduzida.length ? ` ${data.confiancaReduzida.length} dimension(s) with partial evidence (reduced-confidence badge).` : ''}
         </p>
         <div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:12px">
-          <div><div class="rp-score-head">Forças</div><div class="small">${data.destaques.forcas
+          <div><div class="rp-score-head">Strengths</div><div class="small">${data.destaques.forcas
             .map((d) => `${esc(d.short)} (L${d.atual})`)
             .join(' · ')}</div></div>
-          <div><div class="rp-score-head">Maiores lacunas</div><div class="small">${data.destaques.gaps
+          <div><div class="rp-score-head">Largest gaps</div><div class="small">${data.destaques.gaps
             .map((d) => `${esc(d.short)} (+${d.gap})`)
             .join(' · ')}</div></div>
         </div>
@@ -324,28 +323,28 @@ export function renderReport(r: ReportRender): string {
 
   const scorecard = `<section class="card" id="scorecard" style="margin-bottom:18px">
     <div class="card-head"><div>
-      <h2>Quadro de resultados das 7 dimensões</h2>
-      <div class="sub">Nível atual, meta declarada para 12 meses, lacuna e prioridade</div>
+      <h2>Results across the 7 dimensions</h2>
+      <div class="sub">Current level, declared 12-month target, gap and priority</div>
     </div></div>
     ${scorecardTable(data.scorecard)}
     <div class="divider"></div>
     <div class="small muted">
-      Escala L0–L4: ${LEVEL_LABELS.map((l, i) => `<strong>${esc(l)}</strong> — ${esc(LEVEL_DESC[i])}`).join(' · ')}
+      L0–L4 scale: ${LEVEL_LABELS.map((l, i) => `<strong>${esc(l)}</strong> — ${esc(LEVEL_DESC[i])}`).join(' · ')}
     </div>
     <div class="small muted" style="margin-top:8px">
-      O nível da dimensão é o <strong>piso da média</strong> das perguntas (sem arredondar para cima), seguindo a evidência mais forte declarada.
+      The dimension level is the <strong>floor of the average</strong> of its questions (no rounding up), following the strongest evidence declared.
     </div>
   </section>`
 
   const radar = `<section class="card" id="radar" style="margin-bottom:18px">
     <div class="card-head"><div>
-      <h2>Radar atual × meta</h2>
-      <div class="sub">Comparativo entre o nível atual e a meta declarada por dimensão</div>
+      <h2>Current × target radar</h2>
+      <div class="sub">Comparison between the current level and the declared target per dimension</div>
     </div></div>
     <div class="radar-wrap">${radarSvg(data.scorecard)}</div>
     <div class="legend">
-      <span class="k"><i style="background:#080048"></i> Nível atual</span>
-      <span class="k"><i style="background:#8ab520;height:0;border-top:2px dashed #8ab520"></i> Meta 12 meses</span>
+      <span class="k"><i style="background:#080048"></i> Current level</span>
+      <span class="k"><i style="background:#8ab520;height:0;border-top:2px dashed #8ab520"></i> 12-month target</span>
     </div>
   </section>`
 
@@ -358,36 +357,36 @@ export function renderReport(r: ReportRender): string {
           <span class="badge ${i.prioridade_calculada === 'Critical' ? 'critical' : i.prioridade_calculada === 'High' ? 'high' : i.prioridade_calculada === 'Medium' ? 'medium' : 'low'}">${prioridadePt(
             i.prioridade_calculada
           )}</span>
-          <span class="badge ${i.urgencia === 3 ? 'critical' : i.urgencia === 2 ? 'medium' : 'low'}">Urgência ${i.urgencia}/3</span>
+          <span class="badge ${i.urgencia === 3 ? 'critical' : i.urgencia === 2 ? 'medium' : 'low'}">Urgency ${i.urgencia}/3</span>
           ${i.dimensao ? `<span class="badge accent">${esc(DIM_MAP[i.dimensao]?.short || i.dimensao)}</span>` : ''}
         </span>
       </div>
       <dl class="meta-grid">
-        <div><dt>Problema que resolve</dt><dd>${esc(i.problema || '—')}</dd></div>
-        <div><dt>Benefício esperado</dt><dd>${esc(i.beneficio || '—')}</dd></div>
-        <div style="grid-column:1/-1"><dt>Próximo passo sugerido</dt><dd>${esc(i.proximo_passo)}</dd></div>
+        <div><dt>Problem it solves</dt><dd>${esc(i.problema || '—')}</dd></div>
+        <div><dt>Expected benefit</dt><dd>${esc(i.beneficio || '—')}</dd></div>
+        <div style="grid-column:1/-1"><dt>Suggested next step</dt><dd>${esc(i.proximo_passo)}</dd></div>
       </dl>
-      ${i.bloqueio ? `<div class="blocked-note"><i class="fa-solid fa-lock" aria-hidden="true"></i> Executar após resolver ${esc(i.bloqueio)}</div>` : ''}
+      ${i.bloqueio ? `<div class="blocked-note"><i class="fa-solid fa-lock" aria-hidden="true"></i> Execute after resolving ${esc(i.bloqueio)}</div>` : ''}
     </article>`
     )
     .join('')
 
   const iniciativas = `<section class="card" id="iniciativas" style="margin-bottom:18px">
     <div class="card-head"><div>
-      <h2>Iniciativas recomendadas</h2>
+      <h2>Recommended initiatives</h2>
       <div class="sub">${
         data.tipoIniciativas === 'metodo'
-          ? `Cliente não declarou iniciativas — sugestões do método para o vertical ${esc(c.vertical || 'serviços')}`
-          : `${data.iniciativas.length} iniciativa(s) declarada(s) pelo cliente, priorizada(s) por urgência × dimensões de suporte`
+          ? `The client declared no initiatives — method suggestions for the ${esc(c.vertical || 'services')} industry`
+          : `${data.iniciativas.length} initiative(s) declared by the client, prioritised by urgency × supporting dimensions`
       }</div>
     </div></div>
-    ${iniCards || '<p class="muted small">Sem iniciativas para exibir.</p>'}
+    ${iniCards || '<p class="muted small">No initiatives to display.</p>'}
   </section>`
 
   const horizontes = data.plano
     .map(
       (h) => `<div class="horizon">
-      <header><span>${esc(h.label)}</span>${h.itens.length} iniciativa(s)</header>
+      <header><span>${esc(h.label)}</span>${h.itens.length} initiative(s)</header>
       <div class="h-body">
         <p class="small muted" style="margin-bottom:8px">${esc(h.sub)}</p>
         ${
@@ -400,7 +399,7 @@ export function renderReport(r: ReportRender): string {
                     )}</strong><em>${esc(i.proximo_passo)}</em></div></div>`
                 )
                 .join('')
-            : '<div class="small muted">Seminiciativas alocadas — antecipar itens dos próximos horizontes.</div>'
+            : '<div class="small muted">No initiatives assigned — pull forward items from the next horizons.</div>'
         }
       </div>
     </div>`
@@ -409,30 +408,30 @@ export function renderReport(r: ReportRender): string {
 
   const plano = `<section class="card page-break" id="plano" style="margin-bottom:18px">
     <div class="card-head"><div>
-      <h2>Plano de 90 dias</h2>
-      <div class="sub">Três horizontes com as iniciativas alocadas por prioridade</div>
+      <h2>90-day plan</h2>
+      <div class="sub">Three horizons with initiatives assigned by priority</div>
     </div></div>
     <div class="horizons">${horizontes}</div>
   </section>`
 
   const aviso = `<div class="disclaimer">
     <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-    <div><strong>Aviso metodológico.</strong> Este resultado é baseado em autoavaliação declarada pelo responsável da empresa, sem auditoria de evidências.
-    O índice e as prioridades devem ser lidos como retrato do estágio percebido e ponto de partida para validação em campo.
+    <div><strong>Methodological notice.</strong> This result is based on a self-assessment declared by the company's representative, without evidence auditing.
+    The index and priorities should be read as a picture of the perceived stage and a starting point for field validation.
     ${
       data.confiancaReduzida.length
-        ? `Dimensões com preenchimento parcial (${data.confiancaReduzida
+        ? `Dimensions with partial completion (${data.confiancaReduzida
             .map((d) => esc(d.nome))
-            .join(', ')}) recebem selo de confiança reduzida e merecem confirmação em entrevista.`
+            .join(', ')}) carry a reduced-confidence badge and deserve confirmation in an interview.`
         : ''
     }
-    Versão v${r.versao} gerada em ${esc(fmtDateTime(data.geradoEm))}.</div>
+    Version v${r.versao} generated on ${esc(fmtDateTime(data.geradoEm))}.</div>
   </div>`
 
   const historico =
     r.mode !== 'print' && r.versions && r.versions.length > 1
       ? `<div class="card" style="margin-bottom:18px" id="historico">
-        <div class="card-head"><h3>Histórico de versões</h3></div>
+        <div class="card-head"><h3>Version history</h3></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           ${r.versions
             .map(

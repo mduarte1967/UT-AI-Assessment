@@ -46,26 +46,25 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
   const totalAssess = estados.reduce((a, e) => a + (data.porEstado[e] || 0), 0)
 
   const kpis = `<div class="kpis">
-    ${kpi('Clientes ativos', String(data.totalClientes), `${totalAssess} assessment(s) no total`, 'primary')}
+    ${kpi('Active clients', String(data.totalClientes), `${totalAssess} assessment(s) in total`, 'primary')}
     ${kpi(
-      'Índice médio',
+      'Average index',
       data.indiceMedio === null ? '—' : `${formatIndex(data.indiceMedio)}`,
-      data.indiceMedio === null ? 'nenhum relatório gerado' : 'média dos relatórios mais recentes · de 5,0',
+      data.indiceMedio === null ? 'no report generated yet' : 'average of latest reports · out of 5.0',
       'lime'
     )}
     ${kpi(
-      'Relatórios gerados',
+      'Reports generated',
       String(data.porEstado.gerado || 0),
-      `${data.porEstado.submetido || 0} submetido(s) aguardando relatório`
+      `${data.porEstado.submetido || 0} submitted awaiting report`
     )}
     ${kpi(
-      'Aguardando preenchimento',
+      'Awaiting response',
       String((data.porEstado.aguardando || 0) + (data.porEstado.em_preenchimento || 0)),
-      `${data.porEstado.em_preenchimento || 0} em andamento`
+      `${data.porEstado.em_preenchimento || 0} in progress`
     )}
   </div>`
 
-  const maxDim = Math.max(0.5, ...data.dimensoes.map((d) => d.media))
   const dimBars = data.dimensoes
     .map(
       (d) => `<div class="dim-row">
@@ -78,20 +77,15 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
     )
     .join('')
 
-  const distribution = Object.entries({ Critical: 0, High: 0, Medium: 0, Low: 0 })
-    .map(([p]) => p)
-    .map(() => '')
-    .join('')
-
   const clientesCard = `<section class="card" style="margin-bottom:18px">
     <div class="card-head"><div>
-      <h2>Distribuição das 7 dimensões</h2>
-      <div class="sub">Média do nível atual (L0–L4) entre os relatórios mais recentes</div>
+      <h2>Distribution across the 7 dimensions</h2>
+      <div class="sub">Average current level (L0–L4) across the latest reports</div>
     </div>
-    <span class="badge muted">${data.dimensoes.reduce((a, d) => a + d.n, 0)} medições</span></div>
+    <span class="badge muted">${data.dimensoes.reduce((a, d) => a + d.n, 0)} measurements</span></div>
     <div class="dim-list">${dimBars}</div>
     <div class="divider"></div>
-    <div class="small muted">Escala: ${LEVEL_LABELS.map((l) => esc(l)).join(' · ')}</div>
+    <div class="small muted">Scale: ${LEVEL_LABELS.map((l) => esc(l)).join(' · ')}</div>
   </section>`
 
   const chips = estados
@@ -120,18 +114,18 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
       <td class="num"><strong>${r.indice === null ? '—' : formatIndex(r.indice)}</strong></td>
       <td>
         <div class="row-actions">
-          <a class="btn btn-sm btn-ghost" href="/clientes/${r.client_id}" title="Abrir ficha do cliente"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></a>
+          <a class="btn btn-sm btn-ghost" href="/clientes/${r.client_id}" title="Open client record"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></a>
           ${
             r.report_id
-              ? `<a class="btn btn-sm btn-ghost" href="/clientes/${r.client_id}/relatorio" title="Ver relatório"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i></a>`
+              ? `<a class="btn btn-sm btn-ghost" href="/clientes/${r.client_id}/relatorio" title="View report"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i></a>`
               : ''
           }
           ${
             r.estado !== 'submetido' && r.estado !== 'gerado'
-              ? `<a class="btn btn-sm btn-ghost" href="/a/${esc(r.link_token)}" target="_blank" rel="noopener" title="Abrir link do cliente"><i class="fa-solid fa-link" aria-hidden="true"></i></a>`
+              ? `<a class="btn btn-sm btn-ghost" href="/a/${esc(r.link_token)}" target="_blank" rel="noopener" title="Open client link"><i class="fa-solid fa-link" aria-hidden="true"></i></a>`
               : ''
           }
-          <a class="btn btn-sm btn-ghost" href="/clientes/${r.client_id}/editar" title="Editar"><i class="fa-solid fa-pen" aria-hidden="true"></i></a>
+          <a class="btn btn-sm btn-ghost" href="/clientes/${r.client_id}/editar" title="Edit"><i class="fa-solid fa-pen" aria-hidden="true"></i></a>
         </div>
       </td>
     </tr>`
@@ -141,18 +135,18 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
   const table = `<section class="card" id="clientes" style="padding:0;overflow:hidden">
     <div style="padding:18px 20px 0">
       <div class="card-head"><div>
-        <h2>Clientes</h2>
-        <div class="sub">${data.rows.length} de ${data.totalGeral} registro(s)</div>
+        <h2>Clients</h2>
+        <div class="sub">${data.rows.length} of ${data.totalGeral} record(s)</div>
       </div>
-      <a class="btn btn-sm" href="/painel/export.xlsx"><i class="fa-solid fa-file-excel" aria-hidden="true"></i> Exportar XLSX</a></div>
+      <a class="btn btn-sm" href="/painel/export.xlsx"><i class="fa-solid fa-file-excel" aria-hidden="true"></i> Export XLSX</a></div>
       <div class="toolbar">
         <form method="get" action="/painel" class="toolbar" style="flex:1;margin:0">
           <div class="search">
             <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-            <input type="search" name="q" value="${esc(data.filtros.q)}" placeholder="Buscar por empresa, responsável, CNPJ…" aria-label="Buscar clientes">
+            <input type="search" name="q" value="${esc(data.filtros.q)}" placeholder="Search by company, contact, tax ID…" aria-label="Search clients">
           </div>
-          <select name="estado" aria-label="Filtrar por estado">
-            <option value="">Todos os estados</option>
+          <select name="estado" aria-label="Filter by status">
+            <option value="">All statuses</option>
             ${estados
               .map(
                 (e) =>
@@ -160,16 +154,16 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
               )
               .join('')}
           </select>
-          <select name="vertical" aria-label="Filtrar por vertical">
-            <option value="">Todas as verticais</option>
+          <select name="vertical" aria-label="Filter by industry">
+            <option value="">All industries</option>
             ${data.verticais
               .map(
                 (v) => `<option value="${esc(v)}" ${data.filtros.vertical === v ? 'selected' : ''}>${esc(v)}</option>`
               )
               .join('')}
           </select>
-          <button class="btn btn-ghost btn-sm" type="submit">Filtrar</button>
-          ${data.filtros.q || data.filtros.estado || data.filtros.vertical ? `<a class="btn btn-ghost btn-sm" href="/painel">Limpar</a>` : ''}
+          <button class="btn btn-ghost btn-sm" type="submit">Filter</button>
+          ${data.filtros.q || data.filtros.estado || data.filtros.vertical ? `<a class="btn btn-ghost btn-sm" href="/painel">Clear</a>` : ''}
         </form>
       </div>
       <div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap">${chips}</div>
@@ -179,22 +173,22 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
         ? `<div class="table-wrap" style="border:0;border-top:1px solid var(--line);border-radius:0">
       <table class="data">
         <thead><tr>
-          <th>Cliente</th><th>Responsável</th><th class="num">Cadastro</th><th>Estado</th><th class="num">Índice</th><th class="num">Ações</th>
+          <th>Client</th><th>Contact</th><th class="num">Registered</th><th>Status</th><th class="num">Index</th><th class="num">Actions</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table></div>`
         : `<div class="empty"><i class="fa-regular fa-building" aria-hidden="true"></i>
-        Nenhum cliente encontrado. <a href="/clientes/novo">Cadastrar o primeiro cliente</a>.</div>`
+        No client found. <a href="/clientes/novo">Register your first client</a>.</div>`
     }
   </section>`
 
   return adminShell(
     {
-      title: 'Painel da prática',
-      subtitle: 'Unified Technologies · Assessment de maturidade em IA',
+      title: 'Practice dashboard',
+      subtitle: 'Unified Technologies · AI maturity assessment',
       active: '/painel',
       admin,
-      actions: `<a class="btn" href="/clientes/novo"><i class="fa-solid fa-plus" aria-hidden="true"></i> Novo cliente</a>`,
+      actions: `<a class="btn" href="/clientes/novo"><i class="fa-solid fa-plus" aria-hidden="true"></i> New client</a>`,
     },
     kpis,
     `<div class="stack" style="margin-bottom:18px">${clientesCard}</div>`,

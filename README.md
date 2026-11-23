@@ -1,123 +1,83 @@
-# readiness-app-lite · Assessment de Maturidade em IA
+# readiness-app-lite · AI Maturity Assessment
 
-Aplicação web da **Unified Technologies** para oferecer assessment de prontidão em IA de forma automatizada:
-cadastro do cliente → questionário único → relatório automático → dashboard do administrador.
+Web application by **Unified Technologies** that delivers an AI readiness assessment end to end:
+client registration → single questionnaire → automatic report → administrator dashboard.
 
-Stack: **Hono + Cloudflare Workers/Pages + D1**, sem dependências nativas (PDF via print CSS, XLSX gerado no Worker).
+Stack: **Hono + Cloudflare Workers/Pages + D1**, with no native dependencies (PDF via print CSS, XLSX generated inside the Worker).
 
 ## URLs
 
 - **Sandbox (preview)**: https://3000-i6kkz434e1cmpklz09rwv-b9b802c4.sandbox.novita.ai
-- **Produção**: pendente de definição do caminho de deploy (Genspark hospedado ou conta Cloudflare própria)
+- **Production**: pending a deployment path decision (Genspark hosted or the customer's own Cloudflare account)
 
-## Acessos
+## Access
 
-- **Administrador** (único perfil autenticado — conforme definido): `/login`
+- **Administrator** (the only authenticated role — as specified): `/login`
   - E-mail: `admin@unifiedtech.com`
-  - Senha: `Unified@2026`
-  - Enquanto a senha padrão não for trocada, a própria tela de login exibe o bloco **"Primeiro acesso"** com essas credenciais.
-  - Não existe tela de cadastro de usuário: o administrador é criado automaticamente no primeiro boot. Para trocar nome/e-mail/senha use **Configurações → Acesso do administrador** (`/configuracoes#acesso`). Também é possível definir `ADMIN_EMAIL`/`ADMIN_PASSWORD` no ambiente antes do primeiro boot em produção.
-- **Cliente**: não faz login. Acessa `/a/<token>` — link único gerado no cadastro, com expiração (padrão 30 dias).
+  - Password: `Unified@2026`
+  - While the default password is unchanged, the login screen itself shows a **"First access"** box with these credentials.
+  - There is no user sign-up screen: the administrator is created automatically on first boot. To change name/e-mail/password use **Settings → Administrator access** (`/configuracoes#acesso`). You can also set `ADMIN_EMAIL`/`ADMIN_PASSWORD` in the environment before the first production boot.
+- **Client**: no login. The client opens `/a/<token>` — a unique link generated at registration, with an expiry (30 days by default).
 
-## Como usar (guia)
+## How to use (guide)
 
-Há um guia em 5 passos dentro do sistema em **`/ajuda`** (menu "Como usar"):
+An in-app 5-step guide is available at **`/ajuda`** (menu item "How to use"):
 
-1. **Entrar como administrador** — `/login` com as credenciais acima.
-2. **Cadastrar o cliente** — em *Novo cliente*, com nome **e e-mail do responsável**. É para esse e-mail que o convite vai.
-3. **Configurar o envio de e-mail** (uma vez) — em *Configurações → Envio de e-mail*: chave de API do Resend (recomendado) ou SendGrid, remetente verificado, assunto, texto e validade do link. O botão *Testar* confirma a entrega.
-4. **O cliente responde pelo link** — sem senha, com autosave; pode fechar e voltar até enviar.
-5. **O relatório é gerado na hora** — índice, quadro das 7 dimensões, radar atual × meta, iniciativas priorizadas e plano de 90 dias; PDF/XLSX disponíveis para o cliente e para o administrador.
-
-### Como o e-mail do cliente é criado
-
-O cliente **não tem conta de e-mail no sistema**. O "e-mail do cliente" é o *convite* enviado ao e-mail do responsável:
-
-- Se a chave de API estiver configurada em `/configuracoes#email`, o convite é disparado automaticamente no cadastro (e no *Reenviar link*).
-- Sem chave configurada, o link aparece na tela após o cadastro e na ficha do cliente, com botão **Copiar** — nesse caso você envia do seu e-mail corporativo.
-- O assunto e o corpo do convite são editáveis em Configurações, com as variáveis `{{empresa}}`, `{{responsavel}}`, `{{link}}` e `{{expira}}`.
-
-## Identidade visual
-
-Extraída do site institucional (unifiedtech.com): navy `#080048`, azul `#4878B0`, acento lima `#A8D432`,
-logo oficial em `public/static/logo.png`, tipografia Inter. Layout de relatório e login seguem o padrão corporativo UT.
-
-## Fluxo implementado (MVP completo)
-
-| Módulo | Requisitos | Estado |
-|---|---|---|
-| A — Cadastro de cliente | RF-A1..A4 | ✅ cadastro, link único, reenvio com rotação de token, edição, exclusão lógica, e-mail (Resend, com fallback para cópia manual) |
-| B — Formulário | RF-B1..B6 | ✅ 7 dimensões / 22 perguntas, escala 1–5 com âncoras, escolha, múltipla, texto, metas por dimensão, 5 iniciativas, autosave, progresso, revisão com bloqueio, travamento pós-envio |
-| C — Relatório | RF-C1..C5 | ✅ motor de cálculo (piso da média), capa, resumo executivo, scorecard, radar SVG atual×meta, iniciativas priorizadas, plano de 90 dias, aviso de autoavaliação, versionamento v1/v2, PDF e XLSX |
-| D — Dashboard | RF-D1..D4 | ✅ KPIs, distribuição das 7 dimensões, tabela com busca/filtros/ações, visão do relatório, exportação CSV/XLSX da base completa |
-| Fase 2 | RF-A5, B7, D5 | ⏳ auto-cadastro público, editor de perguntas/pesos, gráficos de evolução, lembrete automático, benchmark |
-
-## Regras de cálculo (implementadas)
-
-- **Nível da dimensão** = `floor(média das perguntas da dimensão)`, sem arredondar para cima.
-- **Pergunta escala**: opção 1→L0, 2→L1, 3→L2, 4→L3, 5→L4 (âncoras da rubrica visíveis).
-- **Múltipla escolha (mecanismos)**: cada mecanismo ativo = +1 nível; "nenhum" = L0.
-- **Índice geral** = média das 7 dimensões, exibido em escala 0–5 (`média4 × 1,25`).
-- **Gap** = meta declarada − nível atual; **prioridade** pela matriz gap × urgência, com piso: L0 → Crítica, L1 → no mínimo Alta.
-- **Iniciativas**: priorizadas por urgência × dimensão de suporte; se a dimensão estiver `Critical` recebem a nota *"executar após resolver [dimensão]"*.
-- **Confiança reduzida**: dimensões com perguntas obrigatórias em branco ganham selo com contagem `respondidas/total`.
-
-## Modelo de dados (D1)
-
-`clients`, `assessments`, `questions`, `responses`, `dimension_targets`, `initiatives`, `reports`,
-`admin_users`, `sessions`, `report_access_log`, `audit_log`, `settings`.
-
-- Exclusão é **lógica** (`clients.ativo = 0`, `excluido_em`, `excluido_por`) — nada é apagado.
-- Perguntas são versionadas (`questions.versao`); cada assessment guarda a versão com que nasceu (RF-B7).
-- Trilha de auditoria em `audit_log` (ator, ação, entidade, detalhe, timestamp).
-- Acessos ao relatório registrados em `report_access_log` (origem cliente/admin, IP, user-agent).
+1. **Sign in as administrator** — `/login` with the credentials above.
+2. **Register the client** — in *New client*, including the **contact name and e-mail**. The invitation goes to that e-mail address.
+3. **Configure e-mail delivery** (once) — in *Settings → E-mail delivery*: a Resend API key (recommended) or SendGrid, a verified sender, subject, opening text and link validity. The *Test* button confirms delivery.
+4. **The client answers through the link** — no password, with autosave; they can close and return until they submit.
+5. **The report is generated immediately** — index, 7-dimension scorecard, current × target radar, prioritised initiatives and a 90-day plan; PDF/XLSX available to both the client and the administrator.
 
 ## Endpoints
 
-| Rota | Método | Perfil | Função |
-|---|---|---|---|
-| `/login`, `/logout` | GET/POST | Admin | Autenticação (sessão HttpOnly, 12 h) |
-| `/ajuda` | GET | Admin | Guia "Como usar" em 5 passos + FAQ |
-| `/configuracoes` | GET | Admin | Acesso do administrador + envio de e-mail + teste |
-| `/configuracoes/acesso` | POST | Admin | Troca de nome/e-mail/senha (exige senha atual) |
-| `/configuracoes/email` | POST | Admin | Provedor, chave de API, remetente, assunto, texto, validade do link |
-| `/configuracoes/testar` | POST | Admin | Envia e-mail de teste com a configuração salva |
-| `/painel` | GET | Admin | Dashboard, KPIs, filtros |
-| `/painel/export.csv` · `.xlsx` | GET | Admin | Base completa (clientes, respostas, índices, iniciativas) |
-| `/clientes/novo` | GET/POST | Admin | Cadastro + geração de link + e-mail |
-| `/clientes/:id` | GET | Admin | Ficha, respostas, relatórios, ações |
-| `/clientes/:id/editar` | GET/POST | Admin | Edição |
-| `/clientes/:id/reenviar` | POST | Admin | Novo token (invalida anterior) |
-| `/clientes/:id/reabrir` | POST | Admin | Reabre formulário → nova versão do relatório |
-| `/clientes/:id/excluir` | POST | Admin | Exclusão lógica |
-| `/clientes/:id/relatorio` · `.pdf` · `.xlsx` | GET | Admin | Relatório por versão (`?v=`) |
-| `/a/:token` | GET | Cliente | Formulário |
-| `/api/a/:token/save` | POST | Cliente | Autosave (respostas, metas, iniciativas) |
-| `/api/a/:token/submit` | POST | Cliente | Valida pendências e gera relatório |
-| `/a/:token/relatorio` · `.pdf` · `.xlsx` | GET | Cliente | Relatório e exportações |
-| `/a/:token/respostas` | GET | Cliente | Respostas em modo somente leitura |
-
-## Comandos
-
-```bash
-npm run build                 # vite build → dist/_worker.js
-npm run typecheck             # tsc --noEmit
-pm2 start ecosystem.config.cjs  # dev local em :3000 (wrangler pages dev + D1 local)
-npx wrangler d1 migrations apply readiness-app-lite --local
-```
-
-## Variáveis / secrets
-
-| Nome | Onde | Uso |
+| Method | Path | Purpose |
 |---|---|---|
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | env/secret | Administrador criado no primeiro boot |
-| `RESEND_API_KEY` | secret | Envio de convite/reenvio (sem ela, o link fica copiável na tela) |
-| `MAIL_FROM` | var | Remetente verificado no provedor |
-| `LINK_TTL_DAYS` | var (30) | Expiração do link |
+| GET | `/login` | Administrator sign-in (shows the first-access box) |
+| POST | `/login` | Authenticates and starts the session |
+| GET/POST | `/logout` | Ends the session |
+| GET | `/painel` | Dashboard: KPIs, dimension distribution, client table, filters, exports |
+| GET | `/clientes/novo` | New-client form |
+| POST | `/clientes/novo` | Creates the client, the assessment, the unique link and sends the e-mail |
+| GET | `/clientes/:id` | Client record: link status, reports, scorecard, answers, targets |
+| POST | `/clientes/:id/editar` | Edits client data |
+| POST | `/clientes/:id/reenviar` | Rotates the token (invalidating the old link) and re-sends the e-mail |
+| POST | `/clientes/:id/reabrir` | Reopens the questionnaire so the client can produce a new response version |
+| POST | `/clientes/:id/excluir` | Logical delete |
+| GET | `/a/:token` | Client questionnaire (autosave, progress, review, submit) |
+| POST | `/api/a/:token/save` | Autosave endpoint |
+| POST | `/api/a/:token/submit` | Submits, computes the scorecard and generates the report |
+| GET | `/a/:token/relatorio` | Client report (HTML) |
+| GET | `/a/:token/relatorio/pdf` | Print/PDF version of the report |
+| GET | `/a/:token/relatorio.xlsx` | Report scorecard as XLSX |
+| GET | `/relatorios/:id` | Administrator view of any report version |
+| GET | `/exportar/clientes.xlsx` / `.csv` | Full client base export |
+| GET | `/configuracoes` | Settings: administrator access + e-mail delivery |
+| POST | `/configuracoes/acesso` | Changes name, e-mail and password |
+| POST | `/configuracoes/email` | Saves the mail provider, sender, subject, intro and link validity |
+| POST | `/configuracoes/testar` | Sends a test e-mail |
+| GET | `/ajuda` | In-app usage guide |
 
-## Próximos passos
+## Data architecture
 
-1. Definir o caminho de deploy (hospedagem Genspark vs. conta Cloudflare própria) e publicar com D1 de produção.
-2. Configurar `RESEND_API_KEY` (ou SendGrid) para ativar o envio automático e o lembrete de véspera.
-3. Trocar a senha do administrador e criar usuários adicionais da prática.
-4. Fase 2: auto-cadastro com aprovação, editor de perguntas/pesos, gráficos de evolução, benchmark anônimo.
+- **Storage**: Cloudflare D1 (SQLite). 12 tables — `clients`, `assessments`, `questions`, `responses`, `dimension_targets`, `initiatives`, `reports`, `admin_users`, `sessions`, `settings`, `audit_log`, `schema_meta`.
+- **Bootstrap**: idempotent — `SCHEMA_SQL` plus `ensureSeed` run once per isolate. The seed is versioned (`settings.seed_version`); version `2` is the English question bank. Questions are **upserted by slug**, so existing question IDs — and the responses already collected against them — stay valid.
+- **Question bank**: 7 dimensions, 23 questions (`src/lib/questions.ts`). Slugs are language-neutral so future EN/ES variants can share the same IDs.
+- **Scoring**: dimension level = `floor(mean)` of the per-question levels (rubric based, never rounded up); general index = weighted average 0–4 displayed as `x.x / 5.0`; priority derived from gap × impact with floors (L0 → Critical, L1 → at least High).
+- **Security**: PBKDF2-SHA256 (150k iterations) via Web Crypto, opaque session tokens in `sessions` (HttpOnly `SameSite=Lax` cookie, 12h TTL), expiring per-assessment link tokens, per-client data isolation through the token, and an append-only `audit_log`.
+
+## Migrating data from the Portuguese release
+
+`ensureSeed` (seed version 2) also normalises data captured while the UI was in Portuguese: legacy `clients.vertical` and `clients.tamanho_faixa` values are translated, the stored Portuguese mail subject/intro defaults are replaced, and the seeded administrator name is updated.
+
+## Deployment
+
+- **Platform**: Cloudflare Pages
+- **Status**: ✅ running in the sandbox preview · production deploy pending the path decision
+- **Tech stack**: Hono + TypeScript + D1, UT visual identity (navy `#080048`, blue `#4878B0`, lime `#A8D432`, Inter)
+- **Last updated**: 2026-11-23
+
+## Notes
+
+- Real e-mail delivery requires a Resend or SendGrid API key entered in *Settings → E-mail delivery*. With no key the link is still generated and can be copied and sent manually — the event is recorded in the audit trail.
+- PDF is produced through the browser's print dialog (print CSS) because Workers cannot run a headless browser.

@@ -1,30 +1,30 @@
-import { DIMENSIONS, LEVEL_LABELS, LEVEL_DESC } from '../questions'
+import { DIMENSIONS, LEVEL_LABELS } from '../questions'
 import { esc, fmtDate, fmtDateTime, estadoLabel, estadoTone, formatIndex, prioridadePt } from '../util'
 import { adminShell, badge, alertBox, levelChip } from './layout'
 import type { QRow, ScoreRow } from '../scoring'
 import { isAnswered, levelOf } from '../scoring'
 
 const VERTICAIS = [
-  'Saúde',
-  'Financeiro',
-  'Varejo',
-  'Indústria',
-  'Tecnologia',
-  'Educação',
-  'Logística',
-  'Energia',
-  'Serviços',
-  'Setor público',
-  'Outro',
+  'Healthcare',
+  'Financial services',
+  'Retail',
+  'Manufacturing',
+  'Technology',
+  'Education',
+  'Logistics',
+  'Energy',
+  'Services',
+  'Public sector',
+  'Other',
 ]
 
 const PORTES = [
-  '1 a 50 funcionários',
-  '51 a 200 funcionários',
-  '201 a 500 funcionários',
-  '501 a 1.000 funcionários',
-  '1.001 a 5.000 funcionários',
-  'Mais de 5.000 funcionários',
+  '1 to 50 employees',
+  '51 to 200 employees',
+  '201 to 500 employees',
+  '501 to 1,000 employees',
+  '1,001 to 5,000 employees',
+  'More than 5,000 employees',
 ]
 
 const UFS = [
@@ -54,99 +54,99 @@ export function clientFormPage(
 
   const form = `<form method="post" action="${action}" class="card" novalidate>
     <div class="card-head"><div>
-      <h2>${opts.mode === 'novo' ? 'Novo cliente' : 'Editar cliente'}</h2>
-      <div class="sub">${opts.mode === 'novo' ? 'Ao salvar, o assessment é criado e o link é gerado automaticamente.' : 'Alterações são registradas na trilha de auditoria.'}</div>
+      <h2>${opts.mode === 'novo' ? 'New client' : 'Edit client'}</h2>
+      <div class="sub">${opts.mode === 'novo' ? 'Saving creates the assessment and generates the link automatically.' : 'Changes are recorded in the audit trail.'}</div>
     </div></div>
 
     ${opts.error ? alertBox('danger', esc(opts.error)) : ''}
 
     <div class="grid-2">
       <div class="field">
-        <label for="razao_social">Razão social <span class="req">*</span></label>
+        <label for="razao_social">Legal name <span class="req">*</span></label>
         <input type="text" id="razao_social" name="razao_social" value="${esc(v.razao_social || '')}" required maxlength="180">
       </div>
       <div class="field">
-        <label for="nome_fantasia">Nome fantasia</label>
+        <label for="nome_fantasia">Trading name</label>
         <input type="text" id="nome_fantasia" name="nome_fantasia" value="${esc(v.nome_fantasia || '')}" maxlength="120">
       </div>
       <div class="field">
-        <label for="cnpj">CNPJ</label>
+        <label for="cnpj">Company registration (CNPJ)</label>
         <input type="text" id="cnpj" name="cnpj" value="${esc(v.cnpj || '')}" placeholder="00.000.000/0000-00" maxlength="20">
       </div>
       <div class="field">
-        <label for="tamanho_faixa">Porte (funcionários)</label>
+        <label for="tamanho_faixa">Company size (employees)</label>
         <select id="tamanho_faixa" name="tamanho_faixa">
-          <option value="">Selecione…</option>
+          <option value="">Select…</option>
           ${PORTES.map((p) => `<option value="${esc(p)}" ${v.tamanho_faixa === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
         </select>
       </div>
       <div class="field">
-        <label for="vertical">Setor / vertical</label>
+        <label for="vertical">Industry / vertical</label>
         <select id="vertical" name="vertical">
-          <option value="">Selecione…</option>
+          <option value="">Select…</option>
           ${VERTICAIS.map((x) => `<option value="${esc(x)}" ${v.vertical === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}
         </select>
-        <span class="hint">Define as iniciativas sugeridas quando o cliente não declarar nenhuma.</span>
+        <span class="hint">Defines the suggested initiatives when the client does not declare any.</span>
       </div>
       <div class="field">
-        <label for="cidade">Cidade</label>
+        <label for="cidade">City</label>
         <input type="text" id="cidade" name="cidade" value="${esc(v.cidade || '')}" maxlength="90">
       </div>
       <div class="field">
-        <label for="estado_uf">Estado</label>
+        <label for="estado_uf">State</label>
         <select id="estado_uf" name="estado_uf">
-          <option value="">Selecione…</option>
+          <option value="">Select…</option>
           ${UFS.map((u) => `<option value="${u}" ${v.estado_uf === u ? 'selected' : ''}>${u}</option>`).join('')}
         </select>
       </div>
     </div>
 
     <div class="divider"></div>
-    <h3 style="margin-bottom:12px">Responsável pelo preenchimento</h3>
+    <h3 style="margin-bottom:12px">Contact responsible for completing it</h3>
     <div class="grid-2">
       <div class="field">
-        <label for="responsavel_nome">Nome <span class="req">*</span></label>
+        <label for="responsavel_nome">Name <span class="req">*</span></label>
         <input type="text" id="responsavel_nome" name="responsavel_nome" value="${esc(v.responsavel_nome || '')}" required maxlength="120">
       </div>
       <div class="field">
         <label for="responsavel_email">E-mail <span class="req">*</span></label>
         <input type="email" id="responsavel_email" name="responsavel_email" value="${esc(v.responsavel_email || '')}" required maxlength="160">
-        <span class="hint">O link do assessment é enviado para este endereço.</span>
+        <span class="hint">The assessment link is sent to this address.</span>
       </div>
     </div>
 
     <div class="divider"></div>
     <div style="display:flex;gap:10px;align-items:center">
       <button class="btn" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> ${
-        opts.mode === 'novo' ? 'Cadastrar e gerar link' : 'Salvar alterações'
+        opts.mode === 'novo' ? 'Register and generate link' : 'Save changes'
       }</button>
-      <a class="btn btn-ghost" href="${opts.mode === 'novo' ? '/painel' : `/clientes/${v.id}`}">Cancelar</a>
+      <a class="btn btn-ghost" href="${opts.mode === 'novo' ? '/painel' : `/clientes/${v.id}`}">Cancel</a>
     </div>
   </form>`
 
   const linkCard = opts.link
     ? `<section class="card" style="margin-bottom:18px">
         <div class="card-head"><div>
-          <h2><i class="fa-solid fa-link" aria-hidden="true"></i> Link do assessment gerado</h2>
-          <div class="sub">Enviado para ${esc(v.responsavel_email || '')}${opts.expiraEm ? ` · válido até ${esc(fmtDate(opts.expiraEm))}` : ''}</div>
+          <h2><i class="fa-solid fa-link" aria-hidden="true"></i> Assessment link generated</h2>
+          <div class="sub">Sent to ${esc(v.responsavel_email || '')}${opts.expiraEm ? ` · valid until ${esc(fmtDate(opts.expiraEm))}` : ''}</div>
         </div></div>
         ${opts.mailNote ? alertBox('info', opts.mailNote) : ''}
         <div class="link-box">
           <i class="fa-solid fa-lock" aria-hidden="true"></i>
-          <input type="text" id="gen-link" value="${esc(opts.link)}" readonly aria-label="Link do assessment">
-          <button class="btn btn-sm btn-ghost" type="button" data-copy="gen-link"><i class="fa-regular fa-copy" aria-hidden="true"></i> Copiar</button>
-          <a class="btn btn-sm btn-ghost" href="${esc(opts.link)}" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> Abrir</a>
+          <input type="text" id="gen-link" value="${esc(opts.link)}" readonly aria-label="Assessment link">
+          <button class="btn btn-sm btn-ghost" type="button" data-copy="gen-link"><i class="fa-regular fa-copy" aria-hidden="true"></i> Copy</button>
+          <a class="btn btn-sm btn-ghost" href="${esc(opts.link)}" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> Open</a>
         </div>
       </section>`
     : ''
 
   return adminShell(
     {
-      title: opts.mode === 'novo' ? 'Cadastro de cliente' : 'Editar cliente',
-      subtitle: 'Clientes',
+      title: opts.mode === 'novo' ? 'Register client' : 'Edit client',
+      subtitle: 'Clients',
       active: opts.mode === 'novo' ? '/clientes/novo' : '/clientes',
       admin,
-      actions: `<a class="btn btn-ghost" href="/painel">Voltar ao painel</a>`,
+      actions: `<a class="btn btn-ghost" href="/painel">Back to dashboard</a>`,
     },
     linkCard,
     form,
@@ -158,7 +158,7 @@ export function clientFormPage(
         if (!el) return;
         el.select();
         navigator.clipboard.writeText(el.value).then(function(){
-          var old = b.innerHTML; b.innerHTML = '<i class="fa-solid fa-check"></i> Copiado';
+          var old = b.innerHTML; b.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
           setTimeout(function(){ b.innerHTML = old; }, 1600);
         });
       });
@@ -193,61 +193,61 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
         <div class="sub">${esc(c.razao_social)}${c.vertical ? ` · ${esc(c.vertical)}` : ''}${c.tamanho_faixa ? ` · ${esc(c.tamanho_faixa)}` : ''}</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${a ? badge(estadoLabel(a.estado), estadoTone(a.estado)) : badge('Sem assessment', 'muted')}
-        <a class="btn btn-sm btn-ghost" href="/clientes/${c.id}/editar"><i class="fa-solid fa-pen" aria-hidden="true"></i> Editar</a>
+        ${a ? badge(estadoLabel(a.estado), estadoTone(a.estado)) : badge('No assessment', 'muted')}
+        <a class="btn btn-sm btn-ghost" href="/clientes/${c.id}/editar"><i class="fa-solid fa-pen" aria-hidden="true"></i> Edit</a>
       </div>
     </div>
     <div class="grid-3 small">
-      <div><strong>CNPJ</strong><div class="muted">${esc(c.cnpj || '—')}</div></div>
-      <div><strong>Responsável</strong><div class="muted">${esc(c.responsavel_nome)}</div><div class="muted">${esc(c.responsavel_email)}</div></div>
-      <div><strong>Localidade</strong><div class="muted">${esc([c.cidade, c.estado].filter(Boolean).join(' / ') || '—')}</div></div>
-      <div><strong>Cadastrado em</strong><div class="muted">${esc(fmtDate(c.criado_em))}</div></div>
-      <div><strong>Submetido em</strong><div class="muted">${esc(a?.submetido_em ? fmtDateTime(a.submetido_em) : '—')}</div></div>
-      <div><strong>Versão do questionário</strong><div class="muted">v${esc(a?.questionario_versao || 1)}</div></div>
+      <div><strong>Company registration</strong><div class="muted">${esc(c.cnpj || '—')}</div></div>
+      <div><strong>Contact</strong><div class="muted">${esc(c.responsavel_nome)}</div><div class="muted">${esc(c.responsavel_email)}</div></div>
+      <div><strong>Location</strong><div class="muted">${esc([c.cidade, c.estado].filter(Boolean).join(' / ') || '—')}</div></div>
+      <div><strong>Registered on</strong><div class="muted">${esc(fmtDate(c.criado_em))}</div></div>
+      <div><strong>Submitted on</strong><div class="muted">${esc(a?.submetido_em ? fmtDateTime(a.submetido_em) : '—')}</div></div>
+      <div><strong>Questionnaire version</strong><div class="muted">v${esc(a?.questionario_versao || 1)}</div></div>
     </div>
     <div class="divider"></div>
     ${
       link
         ? `<div class="link-box">
             <i class="fa-solid fa-link" aria-hidden="true"></i>
-            <input type="text" id="client-link" value="${esc(link)}" readonly aria-label="Link do assessment">
-            <button class="btn btn-sm btn-ghost" type="button" data-copy="client-link"><i class="fa-regular fa-copy" aria-hidden="true"></i> Copiar</button>
-            <a class="btn btn-sm btn-ghost" href="${esc(link)}" target="_blank" rel="noopener">Abrir</a>
+            <input type="text" id="client-link" value="${esc(link)}" readonly aria-label="Assessment link">
+            <button class="btn btn-sm btn-ghost" type="button" data-copy="client-link"><i class="fa-regular fa-copy" aria-hidden="true"></i> Copy</button>
+            <a class="btn btn-sm btn-ghost" href="${esc(link)}" target="_blank" rel="noopener">Open</a>
           </div>
           <div class="small muted" style="margin-top:8px">
-            ${a?.expira_em ? `Link válido até ${esc(fmtDate(a.expira_em))}.` : 'Link sem expiração definida.'}
-            ${a?.estado === 'submetido' || a?.estado === 'gerado' ? ' O formulário está travado.' : ''}
+            ${a?.expira_em ? `Link valid until ${esc(fmtDate(a.expira_em))}.` : 'No expiry defined for this link.'}
+            ${a?.estado === 'submetido' || a?.estado === 'gerado' ? ' The questionnaire is locked.' : ''}
           </div>`
-        : '<p class="small muted">Nenhum assessment vinculado.</p>'
+        : '<p class="small muted">No assessment linked.</p>'
     }
     <div class="divider"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <form method="post" action="/clientes/${c.id}/reenviar" onsubmit="return confirm('Gerar novo link? O link anterior será invalidado.')">
-        <button class="btn btn-sm btn-ghost" type="submit"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Reenviar link</button>
+      <form method="post" action="/clientes/${c.id}/reenviar" onsubmit="return confirm('Generate a new link? The previous link will be invalidated.')">
+        <button class="btn btn-sm btn-ghost" type="submit"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Resend link</button>
       </form>
       ${
         a && (a.estado === 'submetido' || a.estado === 'gerado')
-          ? `<form method="post" action="/clientes/${c.id}/reabrir" onsubmit="return confirm('Reabrir o formulário para nova versão das respostas?')">
-              <button class="btn btn-sm btn-ghost" type="submit"><i class="fa-solid fa-lock-open" aria-hidden="true"></i> Reabrir formulário</button>
+          ? `<form method="post" action="/clientes/${c.id}/reabrir" onsubmit="return confirm('Reopen the questionnaire for a new response version?')">
+              <button class="btn btn-sm btn-ghost" type="submit"><i class="fa-solid fa-lock-open" aria-hidden="true"></i> Reopen questionnaire</button>
             </form>`
           : ''
       }
-      <form method="post" action="/clientes/${c.id}/excluir" onsubmit="return confirm('Excluir logicamente este cliente? Os dados permanecem armazenados para auditoria.')">
-        <button class="btn btn-sm btn-danger" type="submit"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Excluir</button>
+      <form method="post" action="/clientes/${c.id}/excluir" onsubmit="return confirm('Logically delete this client? The data remains stored for audit purposes.')">
+        <button class="btn btn-sm btn-danger" type="submit"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Delete</button>
       </form>
     </div>
   </section>`
 
   const reportsCard = `<section class="card" style="margin-bottom:18px">
     <div class="card-head"><div>
-      <h2>Relatórios</h2>
-      <div class="sub">${d.reports.length} versão(ões) gerada(s) · versões anteriores permanecem acessíveis</div>
+      <h2>Reports</h2>
+      <div class="sub">${d.reports.length} version(s) generated · previous versions remain accessible</div>
     </div>
-    ${ultimo ? `<a class="btn btn-sm" href="/clientes/${c.id}/relatorio"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> Ver relatório v${ultimo.versao}</a>` : ''}
+    ${ultimo ? `<a class="btn btn-sm" href="/clientes/${c.id}/relatorio"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> View report v${ultimo.versao}</a>` : ''}
     </div>
     ${
       d.reports.length
-        ? `<div class="table-wrap"><table class="data"><thead><tr><th>Versão</th><th>Índice</th><th>Gerado em</th><th class="num">Ações</th></tr></thead><tbody>
+        ? `<div class="table-wrap"><table class="data"><thead><tr><th>Version</th><th>Index</th><th>Generated on</th><th class="num">Actions</th></tr></thead><tbody>
           ${d.reports
             .slice()
             .reverse()
@@ -257,7 +257,7 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
               <td>${formatIndex(r.indice_geral)} / 5</td>
               <td>${esc(fmtDateTime(r.gerado_em))}</td>
               <td class="num"><div class="row-actions">
-                <a class="btn btn-sm btn-ghost" href="/clientes/${c.id}/relatorio?v=${r.versao}">Abrir</a>
+                <a class="btn btn-sm btn-ghost" href="/clientes/${c.id}/relatorio?v=${r.versao}">Open</a>
                 <a class="btn btn-sm btn-ghost" href="/clientes/${c.id}/relatorio.xlsx?v=${r.versao}">XLSX</a>
                 <a class="btn btn-sm btn-ghost" href="/clientes/${c.id}/relatorio.pdf?v=${r.versao}" target="_blank" rel="noopener">PDF</a>
               </div></td>
@@ -266,15 +266,15 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
             .join('')}
         </tbody></table></div>`
         : `<div class="empty"><i class="fa-regular fa-file-lines" aria-hidden="true"></i>
-            Nenhum relatório ainda. ${a && a.estado !== 'submetido' && a.estado !== 'gerado' ? 'O relatório é gerado automaticamente quando o cliente enviar o formulário.' : ''}</div>`
+            No report yet. ${a && a.estado !== 'submetido' && a.estado !== 'gerado' ? 'The report is generated automatically when the client submits the questionnaire.' : ''}</div>`
     }
   </section>`
 
   const scorecardCard = d.scorecard
     ? `<section class="card" style="margin-bottom:18px">
-        <div class="card-head"><div><h2>Resultado por dimensão (última versão)</h2><div class="sub">Nível atual, meta, lacuna e prioridade por dimensão</div></div></div>
+        <div class="card-head"><div><h2>Result by dimension (latest version)</h2><div class="sub">Current level, target, gap and priority per dimension</div></div></div>
         <div class="table-wrap" style="border:0"><table class="scorecard">
-          <thead><tr><th>Dimensão</th><th class="num">Atual</th><th class="num">Meta</th><th class="num">Lacuna</th><th>Prioridade</th><th>Evidência</th></tr></thead>
+          <thead><tr><th>Dimension</th><th class="num">Current</th><th class="num">Target</th><th class="num">Gap</th><th>Priority</th><th>Evidence</th></tr></thead>
           <tbody>${d.scorecard
             .map(
               (r) => `<tr>
@@ -285,7 +285,7 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
               <td><span class="badge ${
                 r.prioridade === 'Critical' ? 'critical' : r.prioridade === 'High' ? 'high' : r.prioridade === 'Medium' ? 'medium' : 'low'
               }">${prioridadePt(r.prioridade)}</span></td>
-              <td class="small muted">${r.respondidas}/${r.total} perguntas${r.confianca === 'reduzida' ? ' · confiança reduzida' : ''}</td>
+              <td class="small muted">${r.respondidas}/${r.total} questions${r.confianca === 'reduzida' ? ' · reduced confidence' : ''}</td>
             </tr>`
             )
             .join('')}</tbody></table></div>
@@ -294,8 +294,8 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
 
   const respostasCard = `<section class="card">
     <div class="card-head"><div>
-      <h2>Respostas completas</h2>
-      <div class="sub">${Object.keys(d.respostas).length} resposta(s) registrada(s) · questionário v${esc(a?.questionario_versao || 1)}</div>
+      <h2>Full responses</h2>
+      <div class="sub">${Object.keys(d.respostas).length} response(s) recorded · questionnaire v${esc(a?.questionario_versao || 1)}</div>
     </div></div>
     ${d.questions
       .filter((q) => q.tipo !== 'texto')
@@ -331,14 +331,14 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
         const raw = d.respostas[q.id] as any
         const txt = String(raw?.t ?? raw ?? '')
         return txt
-          ? `<div class="divider"></div><h3 style="font-size:13px;margin-bottom:6px">Contexto declarado</h3><p class="small">${esc(txt)}</p>`
+          ? `<div class="divider"></div><h3 style="font-size:13px;margin-bottom:6px">Declared context</h3><p class="small">${esc(txt)}</p>`
           : ''
       })
       .join('')}
   </section>`
 
   const metasCard = `<section class="card">
-    <div class="card-head"><div><h2>Metas declaradas para 12 meses</h2><div class="sub">Base do comparativo atual × meta do radar</div></div></div>
+    <div class="card-head"><div><h2>Targets declared for 12 months</h2><div class="sub">Basis of the current × target comparison in the radar</div></div></div>
     <div class="targets">${DIMENSIONS.map((dim) => {
       const m = Number(d.metas[dim.key] ?? 2)
       return `<div class="target-row"><div><span class="tname">${esc(dim.short)}</span>
@@ -349,10 +349,10 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
   return adminShell(
     {
       title: nome,
-      subtitle: 'Cliente',
+      subtitle: 'Client',
       active: '/clientes',
       admin,
-      actions: `<a class="btn btn-ghost" href="/painel">Painel</a>`,
+      actions: `<a class="btn btn-ghost" href="/painel">Dashboard</a>`,
     },
     flash ? alertBox('ok', esc(flash)) : '',
     infoCard,
@@ -367,7 +367,7 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
         if (!el) return;
         el.select();
         navigator.clipboard.writeText(el.value).then(function(){
-          var old = b.innerHTML; b.innerHTML = '<i class="fa-solid fa-check"></i> Copiado';
+          var old = b.innerHTML; b.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
           setTimeout(function(){ b.innerHTML = old; }, 1600);
         });
       });
