@@ -24,8 +24,8 @@ import {
   clearSessionCookie,
 } from './lib/auth'
 import { DIMENSIONS, QUESTION_BANK_VERSION } from './lib/questions'
-import { computeScorecard, computeIndex, isAnswered, type QRow } from './lib/scoring'
-import { buildReportData, renderReport, type ReportData } from './lib/report'
+import { computeScorecard, computeIndex, isAnswered, PRIORITY_LABEL, type QRow } from './lib/scoring'
+import { buildReportData, renderReport, normalizeReportData, type ReportData } from './lib/report'
 import { buildXlsx, buildCsv } from './lib/xlsx'
 import { sendMail, inviteEmail, testEmail } from './lib/mailer'
 import { getSettings, setSetting, mailConfig, linkTtlDays, defaultCredsActive } from './lib/settings'
@@ -403,7 +403,7 @@ app.get('/admin', requireAdmin(), async (c) => {
     somaIndice += Number(rep.indice_geral)
     nIndice++
     try {
-      const data = JSON.parse(rep.conteudo)
+      const data = normalizeReportData(JSON.parse(rep.conteudo))
       for (const row of data.scorecard || []) {
         if (!dimAcc[row.dimensao]) dimAcc[row.dimensao] = { soma: 0, n: 0 }
         dimAcc[row.dimensao].soma += Number(row.atual)
@@ -519,7 +519,7 @@ async function exportSheets(db: D1Database) {
   const idxRows: any[][] = [['Client', 'Version', 'Index (0–5)', 'Generated on', 'Dimension', 'Current', 'Target', 'Gap', 'Priority']]
   for (const r of reports.results || []) {
     try {
-      const data = JSON.parse(r.conteudo)
+      const data = normalizeReportData(JSON.parse(r.conteudo))
       for (const row of data.scorecard || []) {
         idxRows.push([
           r.razao_social, r.versao, Number(r.indice_geral), r.gerado_em,
@@ -716,7 +716,7 @@ async function loadClientDetail(env: Env, clientId: number, base: string) {
   let scorecard = null
   if (reports.length) {
     try {
-      scorecard = JSON.parse(reports[reports.length - 1].conteudo).scorecard
+      scorecard = normalizeReportData(JSON.parse(reports[reports.length - 1].conteudo)).scorecard
     } catch {
       scorecard = null
     }
@@ -892,7 +892,7 @@ async function renderAdminReport(c: any, admin: any, clientId: number, vParam?: 
   const chosen =
     (vParam && reports.find((r) => String(r.versao) === String(vParam))) || reports[reports.length - 1]
 
-  const data: ReportData = JSON.parse(chosen.conteudo)
+  const data: ReportData = normalizeReportData(JSON.parse(chosen.conteudo))
   const html = renderReport({
     input: {
       client: {
@@ -974,7 +974,7 @@ async function reportXlsx(c: any, clientId: number, vParam?: string) {
   const reports = assessment ? await reportsFor(c.env, assessment.id) : []
   if (!reports.length) return c.json({ error: 'sem relatório' }, 404)
   const chosen = (vParam && reports.find((r) => String(r.versao) === String(vParam))) || reports[reports.length - 1]
-  const data: ReportData = JSON.parse(chosen.conteudo)
+  const data: ReportData = normalizeReportData(JSON.parse(chosen.conteudo))
   const slug = (client.nome_fantasia || client.razao_social || 'cliente').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()
 
   const scoreRows: any[][] = [
@@ -987,8 +987,16 @@ async function reportXlsx(c: any, clientId: number, vParam?: string) {
   ]
 
   const iniRows: any[][] = [
-    ['Initiative', 'Priority', 'Urgency', 'Dimension', 'Problem', 'Benefit', 'Next step', 'Horizon'],
-    ...data.iniciativas.map((i: any) => [i.nome, i.prioridade_calculada, i.urgencia, i.dimensao, i.problema, i.beneficio, i.proximo_passo, i.horizonte]),
+    ['Initiative', 'Priority', 'Dimension', 'Problem', 'Benefit', 'Next step', 'Score'],
+    ...data.iniciativas.map((i: any) => [
+      `${i.id} · ${i.nome}`,
+      PRIORITY_LABEL[i.prioridade as keyof typeof PRIORITY_LABEL] ?? i.prioridade,
+      i.dimensaoLabel,
+      i.problema,
+      i.beneficio,
+      i.proximo_passo,
+      i.score,
+    ]),
   ]
 
   const planoRows: any[][] = [['Horizon', 'Initiatives']]
@@ -1253,7 +1261,7 @@ app.get('/a/:token/report.xlsx', async (c) => {
   const reports = await reportsFor(c.env, a.id)
   if (!reports.length) return c.redirect(`/a/${token}`)
   const chosen = (c.req.query('v') && reports.find((r) => String(r.versao) === String(c.req.query('v')))) || reports[reports.length - 1]
-  const data: ReportData = JSON.parse(chosen.conteudo)
+  const data: ReportData = normalizeReportData(JSON.parse(chosen.conteudo))
   const slug = (a.client.nome_fantasia || a.client.razao_social).replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()
   const bytes = buildXlsx([
     {
@@ -1271,7 +1279,13 @@ app.get('/a/:token/report.xlsx', async (c) => {
       name: 'Initiatives',
       rows: [
         ['Initiative', 'Priority', 'Problem', 'Benefit', 'Next step'],
-        ...data.iniciativas.map((i: any) => [i.nome, i.prioridade_calculada, i.problema, i.beneficio, i.proximo_passo]),
+        ...data.iniciativas.map((i: any) => [
+          `${i.id} · ${i.nome}`,
+          PRIORITY_LABEL[i.prioridade as keyof typeof PRIORITY_LABEL] ?? i.prioridade,
+          i.problema,
+          i.beneficio,
+          i.proximo_passo,
+        ]),
       ],
       widths: [36, 12, 40, 40, 44],
     },
@@ -1296,7 +1310,7 @@ async function renderClientReport(c: any, token: string, vParam?: string, print 
   }
 
   const chosen = (vParam && reports.find((r) => String(r.versao) === String(vParam))) || reports[reports.length - 1]
-  const data: ReportData = JSON.parse(chosen.conteudo)
+  const data: ReportData = normalizeReportData(JSON.parse(chosen.conteudo))
 
   await c.env.DB.prepare(
     'INSERT INTO report_access_log (report_id, assessment_id, origem, ip, user_agent) VALUES (?, ?, ?, ?, ?)'

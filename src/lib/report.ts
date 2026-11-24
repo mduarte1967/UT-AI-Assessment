@@ -1,10 +1,9 @@
-import { DIMENSIONS, DIM_MAP, MATURITY_LABELS, MATURITY_DESC, MATURITY_MATRIX, MATURITY_TO_INITIATIVE } from './questions'
-import type { QRow, ScoreRow, IndexResult, Priority, Wave } from './scoring'
-import { computeIndex, computeScorecard, classifyPriority, priorityScore, WAVE_META, PRIORITY_LABEL, PRIORITY_ACTION, CRITERIA_LABEL, gapScore } from './scoring'
-import type { RecommendedInitiative } from './initiatives'
+import { DIMENSIONS, DIM_MAP, DIM_WEIGHTS, MATURITY_LABELS, MATURITY_DESC, MATURITY_MATRIX, MATURITY_TO_INITIATIVE } from './questions'
+import type { QRow, ScoreRow, IndexResult, Priority, PriorityFactors, Wave } from './scoring'
+import { computeIndex, computeScorecard, classifyPriority, priorityScore, WAVE_META, PRIORITY_LABEL, PRIORITY_ACTION, CRITERIA_LABEL, gapScore, optionLabels } from './scoring'
+import type { Category, RecommendedInitiative } from './initiatives'
 import { selectInitiatives, splitByCategory, selectionNote, CATEGORY_META } from './initiatives'
 import { esc, formatIndex, fmtDate, fmtDateTime } from './util'
-import { optionLabels } from './scoring'
 
 /* ── Input / output shapes ──────────────────────────────────────────────── */
 
@@ -167,6 +166,197 @@ function levelValue(q: QRow, valor: unknown): number | null {
       : Number(valor)
   if (!Number.isFinite(raw) || raw < 1) return null
   return Math.max(1, Math.min(5, Math.round(raw)))
+}
+
+/* ── Legacy compatibility ────────────────────────────────────────────────── */
+
+/**
+ * Reports are stored as an immutable JSON snapshot at the moment of submission.
+ * Snapshots written before the outcome-driven framework (v1) have a different
+ * shape: initiatives carry no `factors`, the roadmap uses `label/sub/horizon`
+ * instead of `meta`, priorities are worded Critical/High/Medium/Low and the
+ * scorecard has no `peso`. Rendering those snapshots directly crashes, so every
+ * read goes through this adapter, which only fills structural gaps and never
+ * recomputes a historical score.
+ */
+
+const LEGACY_PRIORITY: Record<string, Priority> = {
+  P0: 'P0', P1: 'P1', P2: 'P2', P3: 'P3', P4: 'P4',
+  Critical: 'P0', High: 'P1', Medium: 'P2', Low: 'P3',
+}
+
+const ENABLING_DIMS = new Set<string>(['data', 'tech', 'security', 'people'])
+
+const clamp15 = (n: unknown): number => {
+  const v = Number(n)
+  return Number.isFinite(v) ? Math.max(1, Math.min(5, v)) : 3
+}
+
+function normPriority(value: unknown): Priority {
+  return LEGACY_PRIORITY[String(value ?? '').trim()] ?? 'P3'
+}
+
+const WAVE_FROM_HORIZON: Record<string, Wave> = {
+  '1-30': 'foundations',
+  '31-60': 'quickwins',
+  '61-90': 'strategic',
+}
+
+function normalizeScoreRows(raw: any): ScoreRow[] {
+  const rows: any[] = Array.isArray(raw?.scorecard) ? raw.scorecard : []
+  if (!rows.length) return []
+  return rows.map((r) => {
+    const key = (r?.dimensao ?? 'strategy') as ScoreRow['dimensao']
+    const dim = DIM_MAP[key]
+    const atual = Number(r?.atual ?? 0)
+    const meta = Number(r?.meta ?? 0)
+    return {
+      dimensao: key,
+      nome: String(r?.nome ?? dim?.nome ?? key),
+      short: String(r?.short ?? dim?.short ?? key),
+      atual: Number.isFinite(atual) ? atual : 0,
+      meta: Number.isFinite(meta) ? meta : 0,
+      gap: Number(r?.gap ?? 0) || 0,
+      peso: Number.isFinite(Number(r?.peso)) ? Number(r.peso) : (DIM_WEIGHTS[key] ?? 0),
+      prioridade: normPriority(r?.prioridade),
+      confianca: r?.confianca === 'reduzida' ? 'reduzida' : 'alta',
+      respondidas: Number(r?.respondidas ?? 0) || 0,
+      total: Number(r?.total ?? 0) || 0,
+      descobertas: Number(r?.descobertas ?? 0) || 0,
+      bloqueada: !!r?.bloqueada,
+    } as ScoreRow
+  })
+}
+
+/** A catalog code (IN01…) or a positive database id is displayable as-is. */
+const isDisplayableCode = (value: unknown): boolean =>
+  typeof value === 'string' && /^(IN\d{2,3}|\d+)$/.test(value.trim())
+
+function normalizeInitiative(raw: any, rows: ScoreRow[], fallbackCode?: string): RecommendedInitiative {
+  const dimensao = (raw?.dimensao ?? 'strategy') as RecommendedInitiative['dimensao']
+  const dim = DIM_MAP[dimensao] ?? DIMENSIONS[0]
+  const row = rows.find((r) => r.dimensao === dimensao)
+  const urgencia = clamp15(raw?.urgencia)
+
+  // Snapshots from the previous method carried a single urgency score instead of
+  // the seven criteria. Rebuilding the factors from it keeps the table internally
+  // consistent without inventing criteria that were never recorded.
+  const factors: PriorityFactors & { gap: number } = raw?.factors
+    ? { ...raw.factors, gap: Number(raw.factors.gap ?? row?.gap ?? 0) }
+    : {
+        impacto: urgencia,
+        alinhamento: urgencia,
+        valor: urgencia,
+        viabilidade: urgencia,
+        tempo: urgencia,
+        criticidade: urgencia,
+        gap: row?.gap ?? 0,
+      }
+
+  const recordedScore = Number(raw?.score)
+  const score = Number.isFinite(recordedScore) && recordedScore > 0
+    ? recordedScore
+    : priorityScore(factors, factors.gap)
+
+  const categoria: Category =
+    raw?.categoria === 'transformation' || raw?.categoria === 'enabling'
+      ? raw.categoria
+      : ENABLING_DIMS.has(dimensao)
+        ? 'enabling'
+        : 'transformation'
+
+  const rawCode = raw?.codigo ?? (isDisplayableCode(raw?.id) ? raw.id : undefined)
+
+  return {
+    id: String(rawCode ?? fallbackCode ?? '—'),
+    nome: String(raw?.nome ?? ''),
+    categoria,
+    dimensao,
+    dimensaoLabel: String(raw?.dimensaoLabel ?? dim.short),
+    refs: Array.isArray(raw?.refs) ? raw.refs.map(String) : [],
+    trigger: String(raw?.trigger ?? raw?.motivo ?? ''),
+    problema: String(raw?.problema ?? ''),
+    beneficio: String(raw?.beneficio ?? ''),
+    outcome: String(raw?.outcome ?? ''),
+    kpi: String(raw?.kpi ?? ''),
+    proximo_passo: String(raw?.proximo_passo ?? ''),
+    score,
+    prioridade: normPriority(raw?.prioridade ?? raw?.prioridade_calculada),
+    motivo: String(raw?.motivo ?? raw?.problema ?? ''),
+    factors,
+    bloqueio: raw?.bloqueio ? String(raw.bloqueio) : null,
+  }
+}
+
+/**
+ * Coerces any stored snapshot — current or legacy — into the shape the
+ * renderer expects. Idempotent for current snapshots.
+ */
+export function normalizeReportData(raw: any): ReportData {
+  const scorecard = normalizeScoreRows(raw)
+  const iniciativas = (Array.isArray(raw?.iniciativas) ? raw.iniciativas : []).map((i: any, n: number) =>
+    normalizeInitiative(i, scorecard, `IN${String(n + 1).padStart(2, '0')}`)
+  )
+
+  const indice: IndexResult =
+    raw?.indice && Number.isFinite(Number(raw.indice.target))
+      ? { ...computeIndex(scorecard), ...raw.indice }
+      : computeIndex(scorecard)
+
+  const planoRaw: any[] = Array.isArray(raw?.plano) ? raw.plano : []
+  const plano = planoRaw.map((h, n) => {
+    const horizon = String(h?.horizon ?? '')
+    const wave = (h?.wave ?? WAVE_FROM_HORIZON[horizon] ?? 'foundations') as Wave
+    // Legacy waves were labelled in Portuguese with a bare horizon window; the
+    // current copy uses the wave metadata, which is also in English.
+    const meta = h?.meta ?? {
+      label: WAVE_META[wave].label,
+      sub: String(h?.sub ?? WAVE_META[wave].sub),
+      window: WAVE_META[wave].window,
+    }
+    return {
+      wave,
+      meta,
+      itens: (Array.isArray(h?.itens) ? h.itens : []).map((i: any, k: number) =>
+        normalizeInitiative(i, scorecard, `IN${String(n * 10 + k + 1).padStart(2, '0')}`)
+      ),
+    }
+  })
+
+  const grupos =
+    raw?.grupos?.transformation || raw?.grupos?.enabling
+      ? {
+          transformation: (raw.grupos.transformation || []).map((i: any, n: number) =>
+            normalizeInitiative(i, scorecard, `IN${String(n + 1).padStart(2, '0')}`)
+          ),
+          enabling: (raw.grupos.enabling || []).map((i: any, n: number) =>
+            normalizeInitiative(i, scorecard, `IN${String(n + 1).padStart(2, '0')}`)
+          ),
+        }
+      : splitByCategory(iniciativas)
+
+  return {
+    ...raw,
+    // Kept only to flag the snapshot as historical; the renderer shows the
+    // "previous scoring method" notice when this is not 'v2-outcome-driven'.
+    method: raw?.method === 'v2-outcome-driven' ? 'v2-outcome-driven' : 'legacy',
+    indice,
+    scorecard,
+    outcomes: Array.isArray(raw?.outcomes) ? raw.outcomes : [],
+    evidencia: Array.isArray(raw?.evidencia) ? raw.evidencia : [],
+    iniciativas,
+    grupos,
+    plano,
+    destaques: {
+      forcas: [...scorecard].sort((a, b) => b.atual - a.atual).slice(0, 2),
+      gaps: [...scorecard].sort((a, b) => b.gap - a.gap).slice(0, 3),
+      criticas: scorecard.filter((r) => r.prioridade === 'P0'),
+    },
+    confiancaReduzida: scorecard.filter((r) => r.confianca === 'reduzida'),
+    objetivo: String(raw?.objetivo ?? ''),
+    geradoEm: String(raw?.geradoEm ?? new Date().toISOString()),
+    bankVersion: Number(raw?.bankVersion ?? 1) || 1,
+  } as ReportData
 }
 
 /* ── SVG ────────────────────────────────────────────────────────────────── */
