@@ -183,6 +183,114 @@ Per dimension: Strategy 3O/2M · Use Cases 4O/1M · Data 1O/4M · Technology 3M/
 - **Seed version 5 — closed questionnaire.** Re-upserts the bank so the nine outcome-discovery questions switch from open text to multi-select and the three hybrid questions gain the closed evidence options. Per-dimension targets are no longer collected or stored for new assessments; the target comes from `TARGET_BENCHMARK`.
 - **Column upgrades.** `src/lib/schema.ts` exports `COLUMN_MIGRATIONS` (`ALTER TABLE … ADD COLUMN …`), run on every boot with duplicate-column errors ignored, so an existing database picks up new columns without a manual migration step. `migrations/0006_outcome_driven_framework.sql` mirrors the question-bank changes for operators who run migrations explicitly.
 
+## Run it locally (for developers)
+
+Everything below runs on a laptop with **no Cloudflare account** — Wrangler uses a local
+SQLite-backed D1 emulation under `.wrangler/`.
+
+### 1. Requirements
+
+- **Node.js 20 or newer** (`node -v`). Node 22 is what this project is developed against.
+- `npm` (the lockfile is `package-lock.json`; `pnpm-workspace.yaml` is present but npm works).
+- Git.
+
+### 2. Install and build
+
+```bash
+git clone https://github.com/mduarte1967/UT-AI-Assessment.git
+cd UT-AI-Assessment
+npm install
+npm run build          # vite build → dist/_worker.js
+```
+
+### 3. Run the app
+
+```bash
+npm run preview        # wrangler pages dev dist, port 8788 by default
+```
+
+Or with PM2 on port 3000, exactly as the deployed build runs:
+
+```bash
+npm run clean-port                    # free port 3000
+npm run build
+pm2 start ecosystem.config.cjs        # process name: readiness-app-lite
+pm2 logs readiness-app-lite --nostream
+```
+
+Open http://localhost:3000 (or the port printed by `npm run preview`).
+
+**No database setup is required.** On the first request the Worker creates the 13 tables, seeds
+the 35-question bank and creates the administrator (`ensureSeed` in `src/lib/db.ts`). The local
+database lives in `.wrangler/state/v3/d1/`. `npm run db:migrate:local` is only needed if you want
+to exercise `migrations/*.sql` explicitly; `npm run db:reset` wipes the local database and forces
+a clean re-seed on the next request.
+
+### 4. Administrator credentials
+
+The first boot creates `admin@unifiedtech.com` / `Unified@2026`. Override both **before the first
+boot** by creating a `.dev.vars` file (already git-ignored):
+
+```ini
+ADMIN_EMAIL=you@example.com
+ADMIN_PASSWORD=a-long-password
+```
+
+Once the account exists, change the name, e-mail and password in **Settings → Administrator access**.
+⚠️ The default password is hard-coded as a fallback in `src/lib/db.ts` — change it before exposing
+any instance to the internet, and never reuse it in a real deployment.
+
+### 5. Project layout
+
+```
+src/
+  index.tsx            Hono app: every route (public + /admin)
+  lib/
+    schema.ts          SCHEMA_SQL + COLUMN_MIGRATIONS (idempotent bootstrap)
+    db.ts              ensureSeed, question bank seeding, queries
+    questions.ts       DIMENSIONS, the 35 questions, TARGET_BENCHMARK
+    scoring.ts         scorecard, weighted index, priority classification
+    initiatives.ts     catalogue IN01–IN28, selection by dimension + gap
+    report.ts          buildReportData + renderReport (HTML/PDF/XLSX surfaces)
+    auth.ts            PBKDF2-SHA256 (max 100k iterations), sessions
+    views/             one file per screen, plain template strings
+    xlsx.ts            hand-rolled XLSX writer (stored ZIP + CRC32)
+public/static/         app.css (design tokens), logo, static assets
+migrations/            numbered SQL, mirroring the bootstrap
+```
+
+Every view is a TypeScript function returning an HTML string — no JSX, no client framework.
+Shared shells are `publicShell` and `adminShell` in `src/lib/views/layout.ts`.
+
+### 6. Before you change anything
+
+```bash
+npm run typecheck      # tsc --noEmit
+npm run build          # must stay green
+```
+
+Three things will bite you if you ignore them:
+
+- **PBKDF2 is capped at 100,000 iterations** by the Workers runtime. A higher value works locally
+  and fails in production with `NotSupportedError`. Use `PBKDF2_MAX_ITERATIONS` from `src/lib/auth.ts`.
+- **The bootstrap must never throw.** A failing backfill leaves the database half-seeded and every
+  request returns 500. Optional statements are individually tolerated with `.catch(() => undefined)`.
+- **Report snapshots are immutable.** `reports.conteudo` is frozen at submission; old rows may use
+  the v1 shape. Always read it through `normalizeReportData()` instead of casting the JSON.
+
+### 7. Deploying your own copy
+
+`wrangler.jsonc` ships with a placeholder `database_id`. To deploy to your own Cloudflare account:
+
+```bash
+npx wrangler d1 create readiness-app-lite     # copy the new database_id into wrangler.jsonc
+npm run db:migrate:prod
+npm run deploy                                 # build + wrangler pages deploy dist
+```
+
+Set `ADMIN_EMAIL` / `ADMIN_PASSWORD` as secrets (`npx wrangler pages secret put …`) before the first
+production boot, or let the fallback credentials create the account and change them in Settings.
+
 ## Deployment
 
 - **Platform**: Cloudflare Workers for Platform (Genspark hosted) — Worker `4a95750e-3a0a-4b92-9dc8-305b7e0c9e0f`, managed D1 `…-db`
