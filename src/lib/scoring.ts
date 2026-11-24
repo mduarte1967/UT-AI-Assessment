@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { DimKey, QuestionSeed } from './questions'
-import { DIMENSIONS, DIM_WEIGHTS } from './questions'
+import { DIMENSIONS, DIM_WEIGHTS, TARGET_BENCHMARK } from './questions'
 
 export type QRow = QuestionSeed & { id: number; versao: number }
 
@@ -116,13 +116,34 @@ export function isAnswered(q: QRow, valor: unknown): boolean {
   return levelOf(q, valor) !== null
 }
 
-/** Free text of a hybrid or text answer. */
+/** Free text of a hybrid or text answer (legacy banks only). */
 export function evidenceOf(valor: unknown): string {
   if (valor && typeof valor === 'object' && 't' in (valor as any)) {
     return String((valor as any).t ?? '').trim()
   }
   if (typeof valor === 'string' && !/^\d+$/.test(valor)) return valor.trim()
   return ''
+}
+
+/** Selected option indices of a closed (multipla / hybrid-evidence) answer. */
+export function selectionOf(valor: unknown): number[] {
+  if (Array.isArray(valor)) return valor.map(Number).filter((n) => Number.isFinite(n))
+  if (valor && typeof valor === 'object') {
+    const sel = (valor as any).sel
+    if (Array.isArray(sel)) return sel.map(Number).filter((n) => Number.isFinite(n))
+  }
+  return []
+}
+
+/** Labels of the options selected in a closed answer. */
+export function optionLabels(q: { opcoes?: { label: string }[] | null }, valor: unknown): string[] {
+  const sel = selectionOf(valor)
+  return sel.map((i) => q.opcoes?.[i]?.label ?? '').filter(Boolean)
+}
+
+/** Evidence text of a hybrid answer — the closed options selected. */
+export function evidenceLabels(q: { opcoes?: { label: string }[] | null }, valor: unknown): string {
+  return optionLabels(q, valor).join(' · ')
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10
@@ -144,7 +165,7 @@ function fallbackPriority(atual: number, gap: number, dim: DimKey): Priority {
 export function computeScorecard(
   questions: QRow[],
   respostas: RespostaMap,
-  metas: Record<string, number>
+  _metas?: Record<string, number>
 ): ScoreRow[] {
   return DIMENSIONS.map((dim) => {
     const scored = questions.filter((q) => q.dimensao === dim.key && q.persona !== 'O')
@@ -158,8 +179,10 @@ export function computeScorecard(
 
     const media = levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : 1
     const atual = levels.length ? round1(media) : 0
-    const metaRaw = metas[dim.key]
-    const meta = Number.isFinite(Number(metaRaw)) ? Math.max(1, Math.min(5, Number(metaRaw))) : Math.min(5, Math.round(media) + 1)
+    // The target is the benchmark defined by the method, not declared by the
+    // respondent — so the current × target comparison is the same for every
+    // client and stays comparable across cycles.
+    const meta = Math.max(1, Math.min(5, TARGET_BENCHMARK[dim.key] ?? 3))
     const gap = Math.max(0, round1(meta - atual))
 
     const descobertas = discovered.filter((q) => isAnswered(q, respostas[q.id])).length

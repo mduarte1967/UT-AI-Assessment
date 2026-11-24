@@ -143,6 +143,20 @@ export const DIM_MAP: Record<string, Dimension> = Object.fromEntries(
   DIMENSIONS.map((d) => [d.key, d])
 ) as Record<string, Dimension>
 
+/**
+ * Benchmark target maturity by dimension — defined by the method, not declared
+ * by the respondent. Weighted with DIM_WEIGHTS it yields 3.35 on the 1–5 scale.
+ */
+export const TARGET_BENCHMARK: Record<DimKey, number> = {
+  strategy: 3,
+  usecases: 4,
+  data: 3,
+  tech: 4,
+  security: 3,
+  people: 3,
+  economics: 3,
+}
+
 /** Dimension weights of the weighted AI Maturity Index (sums to 1). */
 export const DIM_WEIGHTS: Record<DimKey, number> = Object.fromEntries(
   DIMENSIONS.map((d) => [d.key, d.peso])
@@ -332,12 +346,21 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'O',
     ordem: 10,
     texto:
-      'What are the most important business outcomes your organization aims to achieve over the next 12–24 months?',
-    tipo: 'texto',
-    opcoes: null,
+      'Which business outcomes does your organization aim to achieve over the next 12–24 months?',
+    tipo: 'multipla',
+    opcoes: [
+      { label: 'Revenue growth', level: 0 },
+      { label: 'Cost reduction', level: 0 },
+      { label: 'Customer experience improvement', level: 0 },
+      { label: 'Operational efficiency and productivity', level: 0 },
+      { label: 'Risk, compliance and resilience improvement', level: 0 },
+      { label: 'New products or services', level: 0 },
+      { label: 'Speed to market', level: 0 },
+      { label: 'Workforce capability development', level: 0 },
+    ],
     obrigatoria: true,
     rubrica: null,
-    ajuda: 'List two to four outcomes. They become the business outcome map of the report.',
+    ajuda: 'Select all that apply. They become the business outcome map of the report.',
   },
   {
     slug: 'STR02',
@@ -346,12 +369,21 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'O',
     ordem: 11,
     texto:
-      'Which strategic KPIs are currently below expectations, and what improvement targets have been established?',
-    tipo: 'texto',
-    opcoes: null,
+      'Which strategic KPIs are currently below expectations?',
+    tipo: 'multipla',
+    opcoes: [
+      { label: 'Revenue and margin', level: 0 },
+      { label: 'Cost per transaction or unit cost', level: 0 },
+      { label: 'Cycle time and lead time', level: 0 },
+      { label: 'Error and rework rate', level: 0 },
+      { label: 'Customer satisfaction (NPS / CSAT)', level: 0 },
+      { label: 'Employee productivity', level: 0 },
+      { label: 'Compliance and audit findings', level: 0 },
+      { label: 'Forecast accuracy', level: 0 },
+    ],
     obrigatoria: true,
     rubrica: null,
-    ajuda: 'Name the KPI, the current value and the target you have committed to.',
+    ajuda: 'Select all that apply. The report turns each one into a measurable target front.',
   },
   {
     slug: 'STR03',
@@ -360,12 +392,21 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'O',
     ordem: 12,
     texto:
-      'What business challenges or organizational constraints are preventing you from achieving these outcomes?',
-    tipo: 'texto',
-    opcoes: null,
+      'Which constraints are preventing you from achieving these outcomes?',
+    tipo: 'multipla',
+    opcoes: [
+      { label: 'Budget and funding', level: 0 },
+      { label: 'Data quality and availability', level: 0 },
+      { label: 'Shortage of skilled people', level: 0 },
+      { label: 'Legacy systems and integration', level: 0 },
+      { label: 'Security and regulatory constraints', level: 0 },
+      { label: 'Change resistance and culture', level: 0 },
+      { label: 'Unclear ownership and governance', level: 0 },
+      { label: 'Vendor and procurement constraints', level: 0 },
+    ],
     obrigatoria: true,
     rubrica: null,
-    ajuda: 'Constraints can be operational, financial, regulatory, technological or people-related.',
+    ajuda: 'Select all that apply. These constraints shape the dependency order of the roadmap.',
   },
   {
     slug: 'STR04',
@@ -404,12 +445,21 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'O',
     ordem: 20,
     texto:
-      'Which business processes involve significant manual effort, repetitive activities, operational delays, errors or unnecessary costs, and how are these impacts measured?',
-    tipo: 'texto',
-    opcoes: null,
+      'Which business processes involve significant manual effort, delays, errors or unnecessary cost?',
+    tipo: 'multipla',
+    opcoes: [
+      { label: 'Customer service and support', level: 0 },
+      { label: 'Finance and accounting', level: 0 },
+      { label: 'Procurement and supply chain', level: 0 },
+      { label: 'HR and payroll', level: 0 },
+      { label: 'Sales and marketing operations', level: 0 },
+      { label: 'Compliance and regulatory reporting', level: 0 },
+      { label: 'IT service management', level: 0 },
+      { label: 'Document processing and back office', level: 0 },
+    ],
     obrigatoria: true,
     rubrica: null,
-    ajuda: 'Name the process, the volume and the cost or delay it causes today.',
+    ajuda: 'Select all that apply. Each process becomes a candidate for the AI opportunity portfolio.',
   },
   {
     slug: 'USC02',
@@ -418,12 +468,20 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'O',
     ordem: 21,
     texto:
-      'Where could AI improve customer experience, service delivery, revenue generation or enable new products and services?',
-    tipo: 'texto',
-    opcoes: null,
+      'Where could AI improve customer experience, service delivery or revenue generation?',
+    tipo: 'multipla',
+    opcoes: [
+      { label: 'Customer contact and self-service', level: 0 },
+      { label: 'Sales and lead qualification', level: 0 },
+      { label: 'Service fulfilment and delivery', level: 0 },
+      { label: 'After-sales support and retention', level: 0 },
+      { label: 'Pricing and offer personalization', level: 0 },
+      { label: 'Product and service innovation', level: 0 },
+      { label: 'Marketing content and campaign operations', level: 0 },
+    ],
     obrigatoria: true,
     rubrica: null,
-    ajuda: 'Think about the customer journey: contact, decision, fulfilment, support.',
+    ajuda: 'Select all that apply. They become the customer-facing opportunities of the outcome map.',
   },
   {
     slug: 'USC03',
@@ -432,12 +490,21 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'O',
     ordem: 22,
     texto:
-      'Which business decisions or employee activities could benefit from faster access to information, knowledge, analytics or predictive insights?',
-    tipo: 'texto',
-    opcoes: null,
+      'Which business decisions or employee activities could benefit from faster information, knowledge or predictive insight?',
+    tipo: 'multipla',
+    opcoes: [
+      { label: 'Operational performance decisions', level: 0 },
+      { label: 'Financial planning and forecasting', level: 0 },
+      { label: 'Demand and inventory planning', level: 0 },
+      { label: 'Risk and fraud assessment', level: 0 },
+      { label: 'Knowledge search and document lookup', level: 0 },
+      { label: 'Contract and policy review', level: 0 },
+      { label: 'Maintenance and asset management', level: 0 },
+      { label: 'Workforce scheduling and allocation', level: 0 },
+    ],
     obrigatoria: true,
     rubrica: null,
-    ajuda: 'Decisions that are slow, inconsistent or dependent on scarce specialists are the best candidates.',
+    ajuda: 'Select all that apply. Decisions that are slow or depend on scarce specialists are the best candidates.',
   },
   {
     slug: 'USC04',
@@ -446,12 +513,21 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'O',
     ordem: 23,
     texto:
-      'Which workflows could benefit from intelligent automation, AI assistants or AI agents, and what measurable improvements would be expected?',
-    tipo: 'texto',
-    opcoes: null,
+      'Which workflows could benefit from intelligent automation, AI assistants or AI agents?',
+    tipo: 'multipla',
+    opcoes: [
+      { label: 'Data entry and document processing', level: 0 },
+      { label: 'Ticket triage and routing', level: 0 },
+      { label: 'Order-to-cash and invoice handling', level: 0 },
+      { label: 'Procure-to-pay', level: 0 },
+      { label: 'Employee onboarding and HR requests', level: 0 },
+      { label: 'Report and summary generation', level: 0 },
+      { label: 'Code, test and release support', level: 0 },
+      { label: 'Compliance monitoring and alerts', level: 0 },
+    ],
     obrigatoria: true,
     rubrica: null,
-    ajuda: 'Include the expected gain: hours, cycle time, error rate or cost.',
+    ajuda: 'Select all that apply. Each one becomes a candidate for automation or assistant initiatives.',
   },
   {
     slug: 'USC05',
@@ -476,12 +552,21 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'O',
     ordem: 30,
     texto:
-      'What structured and unstructured data is available to support your priority business processes, decisions and potential AI use cases?',
-    tipo: 'texto',
-    opcoes: null,
+      'Which data sources are available to support your priority processes and potential AI use cases?',
+    tipo: 'multipla',
+    opcoes: [
+      { label: 'ERP and financial systems', level: 0 },
+      { label: 'CRM and customer systems', level: 0 },
+      { label: 'Operational and transactional systems', level: 0 },
+      { label: 'Data warehouse or lake', level: 0 },
+      { label: 'Documents and contracts', level: 0 },
+      { label: 'E-mails, tickets and collaboration content', level: 0 },
+      { label: 'External or third-party data', level: 0 },
+      { label: 'IoT, logs and machine telemetry', level: 0 },
+    ],
     obrigatoria: true,
     rubrica: null,
-    ajuda: 'List the main systems and document repositories that hold this information.',
+    ajuda: 'Select all that apply. They define the data dependencies of the initiative portfolio.',
   },
   {
     slug: 'DAT02',
@@ -548,9 +633,17 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'H',
     ordem: 40,
     texto:
-      'What existing business applications, cloud services, infrastructure and AI capabilities could support your identified business outcomes?',
+      'Which existing business applications, cloud services, infrastructure and AI capabilities could support your business outcomes?',
     tipo: 'hibrido',
-    opcoes: null,
+    opcoes: [
+      { label: 'Documented policy or standard', level: 0 },
+      { label: 'System or tool already in operation', level: 0 },
+      { label: 'Operating metrics or dashboards', level: 0 },
+      { label: 'Named owners and defined responsibilities', level: 0 },
+      { label: 'Audit, review or assessment record', level: 0 },
+      { label: 'No structured evidence yet', level: 0 },
+    ],
+
     obrigatoria: true,
     rubrica: anchors('tech'),
     ajuda: 'Rate the readiness of what exists today and list the platforms behind your answer.',
@@ -590,9 +683,17 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'H',
     ordem: 43,
     texto:
-      'What technical limitations related to performance, availability, scalability, legacy systems or data residency could constrain AI adoption?',
+      'Which technical limitations could constrain AI adoption?',
     tipo: 'hibrido',
-    opcoes: null,
+    opcoes: [
+      { label: 'Documented policy or standard', level: 0 },
+      { label: 'System or tool already in operation', level: 0 },
+      { label: 'Operating metrics or dashboards', level: 0 },
+      { label: 'Named owners and defined responsibilities', level: 0 },
+      { label: 'Audit, review or assessment record', level: 0 },
+      { label: 'No structured evidence yet', level: 0 },
+    ],
+
     obrigatoria: true,
     rubrica: anchors('tech'),
     ajuda: 'Rate how constraining these limitations are today and name the main one.',
@@ -692,12 +793,21 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'O',
     ordem: 60,
     texto:
-      'Which employee groups, business roles and activities could benefit most from AI-enabled productivity, knowledge access or workforce augmentation?',
-    tipo: 'texto',
-    opcoes: null,
+      'Which employee groups could benefit most from AI-enabled productivity, knowledge access or workforce augmentation?',
+    tipo: 'multipla',
+    opcoes: [
+      { label: 'Customer service teams', level: 0 },
+      { label: 'Sales and account management', level: 0 },
+      { label: 'Finance and controlling', level: 0 },
+      { label: 'Operations and delivery', level: 0 },
+      { label: 'HR and people operations', level: 0 },
+      { label: 'IT and engineering', level: 0 },
+      { label: 'Legal, risk and compliance', level: 0 },
+      { label: 'Executive and management', level: 0 },
+    ],
     obrigatoria: true,
     rubrica: null,
-    ajuda: 'Name the roles and the headcount, and what they would stop doing.',
+    ajuda: 'Select all that apply. They shape the workforce enablement initiatives.',
   },
   {
     slug: 'PEO02',
@@ -764,9 +874,17 @@ export const QUESTIONS: QuestionSeed[] = [
     persona: 'H',
     ordem: 70,
     texto:
-      'How does your organization quantify the financial and non-financial impact of its business challenges and improvement opportunities?',
+      'How does your organization quantify the financial and non-financial impact of business challenges and improvement opportunities?',
     tipo: 'hibrido',
-    opcoes: null,
+    opcoes: [
+      { label: 'Documented policy or standard', level: 0 },
+      { label: 'System or tool already in operation', level: 0 },
+      { label: 'Operating metrics or dashboards', level: 0 },
+      { label: 'Named owners and defined responsibilities', level: 0 },
+      { label: 'Audit, review or assessment record', level: 0 },
+      { label: 'No structured evidence yet', level: 0 },
+    ],
+
     obrigatoria: true,
     rubrica: anchors('economics'),
     ajuda: 'Rate the current practice and give one example of a quantified impact.',

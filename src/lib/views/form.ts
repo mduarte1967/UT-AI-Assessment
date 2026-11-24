@@ -54,9 +54,6 @@ export function renderFormPage(ctx: FormContext): string {
     const discoveries = all.filter((q) => q.persona === 'O')
     const scored = all.filter((q) => q.persona !== 'O')
     const done = all.filter((q) => isAnswered(q, ctx.respostas[q.id])).length
-    const metaRaw = Number(ctx.metas[dim.key])
-    const meta = Number.isFinite(metaRaw) && metaRaw >= 1 ? Math.min(5, Math.round(metaRaw)) : 3
-
     const descobrirHtml = discoveries.length
       ? `<div class="subblock">
           <div class="subblock-head">
@@ -96,23 +93,6 @@ export function renderFormPage(ctx: FormContext): string {
       </div>
       ${descobrirHtml}
       ${maturidadeHtml}
-      <div class="divider"></div>
-      <div class="flex-between">
-        <div>
-          <strong class="small">12-month target for this dimension</strong>
-          <div class="small muted">Desired maturity level at the end of 12 months — the basis of the current × target comparison in the radar.</div>
-        </div>
-        <div class="seg" role="group" aria-label="12-month target for ${esc(dim.nome)}">
-          ${[1, 2, 3, 4, 5]
-            .map(
-              (lvl) =>
-                `<button type="button" data-target="${dim.key}" data-level="${lvl}" class="lvl-${lvl} ${meta === lvl ? 'on' : ''}" aria-pressed="${
-                  meta === lvl
-                }" title="${esc(MATURITY_LABELS[lvl - 1])}">L${lvl}</button>`
-            )
-            .join('')}
-        </div>
-      </div>
     </section>`
   }).join('')
 
