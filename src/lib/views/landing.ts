@@ -169,5 +169,5 @@ export function landingPage(opts: LandingOpts = {}): string {
   </div>
 </section>`
 
-  return publicShell('3-Day AI Readiness Assessment', body, { wide: true, startCta: true })
+  return publicShell('3-Day AI Readiness Assessment', body, { wide: true })
 }

@@ -35,11 +35,12 @@ the shells (`publicShell`, `adminShell`) in `src/lib/views/layout.ts`.
 
 The client model targets **US and Caribbean organisations** (Unified Technologies' market):
 
-| Field | Notes |
-|---|---|
-| Legal name / Trading name (DBA) | required / optional |
-| Tax ID (EIN / registration) | optional — US EIN or local registration number |
-| Website | optional |
+| Field | Public form (`/start`) | Admin form (`/admin/clients/new`) |
+|---|---|---|
+| Legal name | required | required |
+| Trading name (DBA) | — *not asked* | optional |
+| Tax ID (EIN / registration) | — *not asked* | optional |
+| Website | optional | optional |
 | Industry | 14 sectors, incl. Insurance, Hospitality, Telecommunications, Government |
 | Company size | headcount bands from 1–50 to 5,000+ |
 | Country / territory | 44 destinations: US, Puerto Rico, USVI, Guam, Canada, Mexico, the Caribbean, Central and South America |

@@ -82,7 +82,7 @@ export function adminShell(opts: AdminShellOptions, ...content: string[]): strin
     <button class="mobile-toggle" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
     <nav class="topbar-nav" aria-label="Administrator navigation">
       ${nav}
-      <form method="post" action="/admin/admin/logout" style="margin:0">
+      <form method="post" action="/admin/logout" style="margin:0">
         <button class="topbar-user" type="submit" title="Sign out">
           <span class="avatar" aria-hidden="true">${esc(opts.admin.nome.slice(0, 1).toUpperCase())}</span>
           ${esc(opts.admin.nome.split(' ')[0])}
@@ -135,11 +135,9 @@ export type PublicShellOptions = {
   wide?: boolean
   head?: string
   bodyClass?: string
-  /** Show the "Start the assessment" button in the top bar. */
-  startCta?: boolean
 }
 
-export function publicTopbar(opts: { startCta?: boolean } = {}): string {
+export function publicTopbar(): string {
   return `<header class="topbar">
   <div class="topbar-inner">
     ${LOGO.replace('{{HOME}}', '/')}
@@ -148,7 +146,6 @@ export function publicTopbar(opts: { startCta?: boolean } = {}): string {
       <a href="/">Overview</a>
       <a href="/#dimensions">Dimensions</a>
       <a href="/#how-it-works">How it works</a>
-      <a href="/start" class="topbar-cta-lime"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> Start the assessment</a>
     </nav>
   </div>
 </header>`
@@ -211,7 +208,7 @@ export function publicShell(title: string, content: string, opts: PublicShellOpt
   return doc(
     { title, head: opts.head, bodyClass: opts.bodyClass || 'public-shell' },
     `<a class="skip-link" href="#main">Skip to content</a>`,
-    publicTopbar({ startCta: opts.startCta }),
+    publicTopbar(),
     opts.hero ? heroHtml(opts.hero, !!opts.wide) : '',
     `<main id="main" class="public-body${opts.wide ? ' wide' : ''}">${content}</main>`,
     siteFooter(),

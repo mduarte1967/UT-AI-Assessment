@@ -70,17 +70,8 @@ export function signupPage(opts: SignupOpts = {}): string {
         <input type="text" id="razao_social" name="razao_social" value="${esc(v.razao_social || '')}" required maxlength="180" autocomplete="organization">
       </div>
       <div class="field">
-        <label for="nome_fantasia">Trading name (DBA)</label>
-        <input type="text" id="nome_fantasia" name="nome_fantasia" value="${esc(v.nome_fantasia || '')}" maxlength="120">
-      </div>
-      <div class="field">
         <label for="website">Website</label>
         <input type="text" id="website" name="website" value="${esc(v.website || '')}" placeholder="https://" maxlength="160" autocomplete="url">
-      </div>
-      <div class="field">
-        <label for="tax_id">Tax ID (EIN / registration)</label>
-        <input type="text" id="tax_id" name="tax_id" value="${esc(v.tax_id || '')}" placeholder="12-3456789" maxlength="30">
-        <span class="hint">Optional — US EIN or your local registration number.</span>
       </div>
       <div class="field">
         <label for="vertical">Industry</label>
