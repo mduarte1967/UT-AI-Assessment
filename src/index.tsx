@@ -23,7 +23,7 @@ import {
   sessionCookie,
   clearSessionCookie,
 } from './lib/auth'
-import { DIMENSIONS } from './lib/questions'
+import { DIMENSIONS, QUESTION_BANK_VERSION } from './lib/questions'
 import { computeScorecard, computeIndex, isAnswered, type QRow } from './lib/scoring'
 import { buildReportData, renderReport, type ReportData } from './lib/report'
 import { buildXlsx, buildCsv } from './lib/xlsx'
@@ -626,14 +626,14 @@ async function createClientWithAssessment(
 
   await env.DB.prepare(
     `INSERT INTO assessments (client_id, estado, link_token, expira_em, questionario_versao, criado_por, atualizado_em, atualizado_por)
-     VALUES (?, 'aguardando', ?, ?, 1, ?, ?, ?)`
+     VALUES (?, 'aguardando', ?, ?, ?, ?, ?, ?)`
   )
-    .bind(clientId, token, expira, createdBy, nowIso(), createdBy)
+    .bind(clientId, token, expira, QUESTION_BANK_VERSION, createdBy, nowIso(), createdBy)
     .run()
 
   const assRow = await env.DB.prepare('SELECT id FROM assessments WHERE link_token = ?').bind(token).first<{ id: number }>()
   if (assRow) {
-    const stmt = env.DB.prepare('INSERT OR REPLACE INTO dimension_targets (assessment_id, dimensao, meta_nivel) VALUES (?, ?, 2)')
+    const stmt = env.DB.prepare('INSERT OR REPLACE INTO dimension_targets (assessment_id, dimensao, meta_nivel) VALUES (?, ?, 3)')
     for (const d of DIMENSIONS) await stmt.bind(assRow.id, d.key).run()
   }
 
@@ -911,7 +911,6 @@ async function renderAdminReport(c: any, admin: any, clientId: number, vParam?: 
       questions: [],
       respostas: {},
       metas: {},
-      initiatives: [],
       generatedAt: chosen.gerado_em,
     },
     data,
@@ -994,7 +993,7 @@ async function reportXlsx(c: any, clientId: number, vParam?: string) {
 
   const planoRows: any[][] = [['Horizon', 'Initiatives']]
   for (const h of data.plano) {
-    planoRows.push([h.label, h.itens.map((i: any) => i.nome).join(' | ') || '—'])
+    planoRows.push([h.meta.label, h.itens.map((i: any) => i.nome).join(' | ') || '—'])
   }
 
   const bytes = buildXlsx([
@@ -1078,7 +1077,7 @@ app.post('/api/a/:token/save', async (c) => {
     for (const t of body.targets) {
       const dim = String(t?.dimensao || '')
       if (!DIMENSIONS.some((d) => d.key === dim)) continue
-      const meta = Math.max(0, Math.min(4, Number(t.meta)))
+      const meta = Math.max(1, Math.min(5, Math.round(Number(t.meta))))
       await c.env.DB.prepare(
         `INSERT INTO dimension_targets (assessment_id, dimensao, meta_nivel) VALUES (?, ?, ?)
          ON CONFLICT(assessment_id, dimensao) DO UPDATE SET meta_nivel = excluded.meta_nivel`
@@ -1145,7 +1144,6 @@ app.post('/api/a/:token/submit', async (c) => {
   }
 
   const metas = await targetsMap(c.env, a.id)
-  const initiatives = await initiativesFor(c.env, a.id)
 
   const data = buildReportData({
     client: a.client as any,
@@ -1153,7 +1151,6 @@ app.post('/api/a/:token/submit', async (c) => {
     questions,
     respostas,
     metas,
-    initiatives,
     generatedAt: nowIso(),
   })
 
@@ -1194,10 +1191,10 @@ app.post('/api/a/:token/submit', async (c) => {
         ini.nome,
         ini.problema,
         ini.beneficio,
-        ini.urgencia,
-        ini.prioridade_calculada,
+        ini.prioridade === 'P0' ? 3 : ini.prioridade === 'P1' ? 2 : 1,
+        ini.prioridade,
         ini.proximo_passo,
-        ini.codigo || null,
+        ini.id,
         ini.kpi || null,
         ini.motivo || null
       )
@@ -1314,7 +1311,6 @@ async function renderClientReport(c: any, token: string, vParam?: string, print 
       questions: [],
       respostas: {},
       metas: {},
-      initiatives: [],
       generatedAt: chosen.gerado_em,
     },
     data,

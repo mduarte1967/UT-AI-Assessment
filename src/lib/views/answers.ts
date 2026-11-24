@@ -17,11 +17,13 @@ export type AnswersContext = {
 
 function answerLabel(q: QRow, val: unknown): string {
   if (val === null || val === undefined) return '<span class="muted">Not answered</span>'
-  if (q.tipo === 'escala') {
+  if (q.tipo === 'escala' || q.tipo === 'hibrido') {
     const v = Number((val as any)?.v ?? val)
-    const idx = v - 1
-    const label = q.rubrica?.labels?.[idx] || ''
-    return label ? `L${idx} — ${esc(label)}` : `L${idx}`
+    if (!v) return '<span class="muted">Not answered</span>'
+    const label = q.rubrica?.labels?.[v - 1] || ''
+    const ev = String((val as any)?.t ?? '').trim()
+    const base = label ? `L${v} — ${esc(label)}` : `L${v}`
+    return ev ? `${base}<div class="small muted" style="margin-top:4px"><i class="fa-solid fa-clipboard-list"></i> ${esc(ev)}</div>` : base
   }
   if (q.tipo === 'escolha') {
     const i = Number((val as any)?.i ?? val)
@@ -37,18 +39,19 @@ function answerLabel(q: QRow, val: unknown): string {
 }
 
 export function renderAnswersPage(ctx: AnswersContext): string {
-  const scored = ctx.questions.filter((q) => q.tipo !== 'texto')
+  const scored = ctx.questions.filter((q) => q.persona !== 'O')
   const answered = scored.filter((q) => isAnswered(q, ctx.respostas[q.id])).length
 
   const sections = DIMENSIONS.map((dim) => {
     const qs = ctx.questions.filter((q) => q.dimensao === dim.key)
     if (!qs.length) return ''
-    const meta = Number(ctx.metas[dim.key] ?? 2)
+    const metaRaw = Number(ctx.metas[dim.key])
+    const meta = Number.isFinite(metaRaw) && metaRaw >= 1 ? Math.min(5, Math.round(metaRaw)) : 3
     return `<section class="section">
       <div class="section-head">
         <div class="dim-icon"><i class="fa-solid ${dim.icone}" aria-hidden="true"></i></div>
-        <div><h2>${esc(dim.nome)}</h2><div class="sub">${esc(dim.descricao)}</div></div>
-        <span class="count">target L${meta}</span>
+        <div><h2>${esc(dim.nome)}</h2><div class="sub">${esc(dim.objetivo)}</div></div>
+        <span class="count">target L${meta} · ${Math.round(dim.peso * 100)}% weight</span>
       </div>
       <div class="table-wrap" style="border:0;margin-top:10px">
         <table class="data" style="font-size:13px">
@@ -56,11 +59,11 @@ export function renderAnswersPage(ctx: AnswersContext): string {
             .map((q) => {
               const val = ctx.respostas[q.id]
               const lvl = levelOf(q, val)
-              if (q.tipo === 'texto') {
-                return `<tr><td style="width:42%">${esc(q.texto)}</td><td colspan="2">${answerLabel(q, val)}</td></tr>`
+              if (q.persona === 'O') {
+                return `<tr><td style="width:42%"><span class="ref-chip">${esc(q.ref)}</span> ${esc(q.texto)}</td><td colspan="2">${answerLabel(q, val)}</td></tr>`
               }
               return `<tr>
-                <td style="width:42%">${esc(q.texto)}</td>
+                <td style="width:42%"><span class="ref-chip">${esc(q.ref)}</span> ${esc(q.texto)}</td>
                 <td>${answerLabel(q, val)}</td>
                 <td class="num" style="width:70px">${lvl === null ? '<span class="muted">—</span>' : levelChip(lvl)}</td>
               </tr>`
@@ -72,11 +75,15 @@ export function renderAnswersPage(ctx: AnswersContext): string {
   }).join('')
 
   const metasRows = DIMENSIONS.map(
-    (d) => `<div class="target-row">
+    (d) => {
+      const raw = Number(ctx.metas[d.key])
+      const m = Number.isFinite(raw) && raw >= 1 ? Math.min(5, Math.round(raw)) : 3
+      return `<div class="target-row">
       <div><span class="tname">${esc(d.short)}</span>
-      <span class="tnow">${esc(LEVEL_LABELS[Number(ctx.metas[d.key] ?? 2)] || '')}</span></div>
-      ${levelChip(Number(ctx.metas[d.key] ?? 2))}
+      <span class="tnow">${esc(LEVEL_LABELS[m - 1] || '')}</span></div>
+      ${levelChip(m)}
     </div>`
+    }
   ).join('')
 
   const body = `

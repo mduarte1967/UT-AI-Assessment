@@ -53,7 +53,7 @@ export function signupPage(opts: SignupOpts = {}): string {
 
   const dims = DIMENSIONS.map(
     (d) => `<li><i class="fa-solid ${d.icone}" aria-hidden="true"></i><span><strong>${esc(d.nome)}</strong>
-      <em>${esc(d.descricao)}</em></span></li>`
+      <em>${esc(d.objetivo)}</em></span></li>`
   ).join('')
 
   const form = `<form method="post" action="/start" class="card" novalidate>
@@ -157,9 +157,9 @@ export function signupPage(opts: SignupOpts = {}): string {
       </div></div>
       <div class="signup-facts">
         <div><strong>7</strong><span>dimensions</span></div>
-        <div><strong>23</strong><span>questions</span></div>
+        <div><strong>35</strong><span>questions</span></div>
         <div><strong>~30</strong><span>minutes</span></div>
-        <div><strong>L0–L4</strong><span>model</span></div>
+        <div><strong>1–5</strong><span>maturity scale</span></div>
       </div>
       <div class="divider"></div>
       <h3 style="font-size:0.8rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)">The seven dimensions</h3>
@@ -220,7 +220,7 @@ export function signupDonePage(opts: {
       <p class="small">
         Open the link in the same browser to answer straight away. Your answers are saved automatically, so you can
         close the page and come back later until you submit. As soon as you submit, the report is generated —
-        maturity index, seven-dimension scorecard, current × target radar, prioritised initiatives and a 90-day plan.
+        business outcome map, AI Maturity Index, seven-dimension scorecard, current × target radar and an initiative portfolio classified P0–P4.
       </p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
         <a class="btn" href="${esc(opts.link)}"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> Open the questionnaire</a>

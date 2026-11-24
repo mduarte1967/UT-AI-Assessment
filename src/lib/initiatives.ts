@@ -1,724 +1,720 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Initiative library + selection engine.
+// AI Initiative Catalog — IN01 … IN28
 //
-// The client never fills in initiatives: the method owns a curated library of
-// candidate initiatives, and this engine picks the ones that make sense for a
-// given maturity profile. Selection is driven by
-//   • the overall index (0–5) — decides which maturity band the organisation is
-//     in, and therefore whether it needs foundations, core builds, scaling or
-//     optimisation plays;
-//   • the gap and priority of each of the seven dimensions — decides *where* the
-//     effort should land first;
-//   • vertical affinity — a light nudge, never a filter.
+// Every entry keeps full traceability: dimension → related questions → trigger
+// condition → recommended initiative. Two families are distinguished, because a
+// roadmap of technology investments is not the same as a roadmap of business
+// transformation:
+//
+//   transformation — delivers a business result directly (concierge, document
+//                    intelligence, agentic workflows, predictive decisions…)
+//   enabling       — establishes the conditions for those results to happen
+//                    (governance, data quality, AI gateway, FinOps, literacy…)
+//
+// Each initiative is scored on the seven prioritisation criteria and classified
+// P0–P4. P0 is a mandatory override: a critical foundation is resolved before
+// the initiatives that depend on it, regardless of its individual ROI.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { DimKey } from './questions'
-import { DIMENSIONS } from './questions'
-import type { ScoreRow } from './scoring'
+import { DIM_MAP } from './questions'
+import type { Priority, PriorityFactors, ScoreRow } from './scoring'
+import { classifyPriority, priorityScore } from './scoring'
 
-export type InitiativeTier = 'foundation' | 'core' | 'scale' | 'optimize'
-export type Effort = 'low' | 'medium' | 'high'
+export type Category = 'transformation' | 'enabling'
 
-export type InitiativeTemplate = {
-  codigo: string
+export type InitiativeDef = {
+  /** Catalog id — IN01 … IN28. */
+  id: string
+  dimensao: DimKey
+  /** Question refs that produce the evidence for this initiative. */
+  refs: string[]
   nome: string
+  categoria: Category
+  trigger: string
   problema: string
   beneficio: string
-  dimensao: DimKey
-  tier: InitiativeTier
-  urgencia: 1 | 2 | 3
-  esforco: Effort
-  proximo_passo: string
+  /** Business outcome the initiative is meant to move. */
+  outcome: string
   kpi: string
-  /** Verticals this initiative is especially relevant for. Empty = universal. */
-  verticais?: string[]
+  proximo_passo: string
+  /** Critical prerequisite: becomes P0 when the dimension is still immature. */
+  foundation: boolean
+  factors: PriorityFactors
+  /** Extra eligibility test beyond the dimension gap. */
+  gate?: (ctx: SelectionContext) => boolean
 }
 
-// ── Library ─────────────────────────────────────────────────────────────────
+export type SelectionContext = {
+  scorecard: ScoreRow[]
+  /** Maturity level per question ref (null when the answer carries no evidence). */
+  levelsByRef: Record<string, number | null>
+}
 
-export const INITIATIVE_LIBRARY: InitiativeTemplate[] = [
-  // ── Strategy and Leadership ────────────────────────────────────────────────
+const lvl = (ctx: SelectionContext, ref: string): number | null => {
+  const v = ctx.levelsByRef[ref]
+  return v === undefined ? null : v
+}
+
+// ── Catalog ─────────────────────────────────────────────────────────────────
+
+export const INITIATIVE_CATALOG: InitiativeDef[] = [
+  // ── Strategy ───────────────────────────────────────────────────────────────
   {
-    codigo: 'STR-F1',
-    nome: 'Executive sponsor and AI steering group',
-    problema: 'The AI agenda has no named owner and decisions stall between areas.',
-    beneficio: 'A single accountable executive and a fortnightly forum where priorities are decided.',
+    id: 'IN01',
     dimensao: 'strategy',
-    tier: 'foundation',
-    urgencia: 3,
-    esforco: 'low',
-    proximo_passo: 'Name a C-level sponsor, seat the steering group and give it a decision charter within 30 days.',
-    kpi: 'Sponsor named · steering group meeting fortnightly with minutes published',
+    refs: ['STR01', 'STR02', 'STR03', 'STR04', 'STR05'],
+    nome: 'AI Strategy & Transformation Roadmap',
+    categoria: 'enabling',
+    trigger: 'Business objectives not translated into AI priorities',
+    problema: 'Declared business outcomes are not linked to an AI agenda, so effort follows enthusiasm instead of value.',
+    beneficio: 'A single roadmap that connects each business outcome to the AI capabilities and investment it requires.',
+    outcome: 'Strategic alignment',
+    kpi: 'Board-approved roadmap · % of AI investment traceable to a declared outcome',
+    proximo_passo: 'Translate the stated outcomes into an outcome map and rank the AI capabilities each one needs.',
+    foundation: false,
+    factors: { impacto: 4, alinhamento: 5, valor: 4, viabilidade: 4, tempo: 3, criticidade: 3 },
   },
   {
-    codigo: 'STR-F2',
-    nome: 'Twelve-month AI ambition statement',
-    problema: 'AI work is a set of disconnected experiments with no declared outcome.',
-    beneficio: 'One sentence everyone can repeat, with three measurable outcomes for the year.',
+    id: 'IN02',
     dimensao: 'strategy',
-    tier: 'foundation',
-    urgencia: 2,
-    esforco: 'low',
-    proximo_passo: 'Run a half-day workshop with the executive team and publish the statement internally.',
-    kpi: 'Statement approved by the executive team · 3 baseline KPIs defined',
-  },
-  {
-    codigo: 'STR-C1',
-    nome: 'Annual AI portfolio and funding cycle',
-    problema: 'Funding is decided case by case, so the portfolio follows whoever asks loudest.',
-    beneficio: 'A ranked portfolio with an explicit budget line and quarterly reallocation.',
-    dimensao: 'strategy',
-    tier: 'core',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Consolidate all AI demand into a single backlog and score it with one shared rubric.',
-    kpi: 'Portfolio ranked quarterly · budget line approved in the annual plan',
-  },
-  {
-    codigo: 'STR-S1',
-    nome: 'AI value realisation office',
-    problema: 'Benefits are claimed at approval and never measured afterwards.',
-    beneficio: 'A light function that tracks realised value and retires initiatives that do not deliver.',
-    dimensao: 'strategy',
-    tier: 'scale',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Assign two people part-time to track benefit cases against the approved business case.',
-    kpi: '100% of funded initiatives with a measured benefit review within 6 months',
-  },
-  {
-    codigo: 'STR-O1',
-    nome: 'AI-driven business model review',
-    problema: 'AI is used to cut cost inside the current model, not to change it.',
-    beneficio: 'New revenue or service lines identified and tested before competitors.',
-    dimensao: 'strategy',
-    tier: 'optimize',
-    urgencia: 1,
-    esforco: 'high',
-    proximo_passo: 'Run a quarterly session pairing the strategy team with product to test one new AI-enabled offer.',
-    kpi: 'At least one AI-enabled offer in market within 12 months',
+    refs: ['STR04', 'STR05'],
+    nome: 'AI Portfolio Governance',
+    categoria: 'enabling',
+    trigger: 'Lack of sponsorship, ownership or strategic alignment',
+    problema: 'No named executive owner and no forum where the AI portfolio is decided, so priorities drift.',
+    beneficio: 'Accountable sponsorship, a decision forum and one ranked portfolio instead of competing requests.',
+    outcome: 'Executive sponsorship and measurable AI objectives',
+    kpi: 'Sponsor named · portfolio reviewed quarterly · funded initiatives with owner and KPI',
+    proximo_passo: 'Name the executive sponsor, seat a steering group and give it a written decision charter.',
+    foundation: true,
+    factors: { impacto: 4, alinhamento: 5, valor: 3, viabilidade: 5, tempo: 4, criticidade: 5 },
   },
 
-  // ── Use Cases and Value ────────────────────────────────────────────────────
+  // ── Use Cases ──────────────────────────────────────────────────────────────
   {
-    codigo: 'USE-F1',
-    nome: 'Use-case inventory and value triage',
-    problema: 'Ideas live in spreadsheets and chats, with no view of effort versus value.',
-    beneficio: 'A single backlog scored on value, feasibility and risk, refreshed monthly.',
+    id: 'IN03',
     dimensao: 'usecases',
-    tier: 'foundation',
-    urgencia: 3,
-    esforco: 'low',
-    proximo_passo: 'Collect every idea in one backlog and score the first 20 with a simple 1–5 rubric.',
-    kpi: 'Single backlog live · 100% of active work traceable to a scored item',
+    refs: ['USC01', 'USC02', 'USC03', 'USC04', 'USC05'],
+    nome: 'AI Use Case Discovery & Prioritization',
+    categoria: 'enabling',
+    trigger: 'Relevant business problems without a validated AI portfolio',
+    problema: 'Opportunities identified in interviews are never consolidated, scored or sequenced.',
+    beneficio: 'A single scored backlog with value, feasibility and risk visible side by side.',
+    outcome: 'AI opportunity portfolio',
+    kpi: 'Backlog live · 100% of active work traceable to a scored item',
+    proximo_passo: 'Consolidate the declared pain points into one backlog and score the first twenty.',
+    foundation: false,
+    factors: { impacto: 4, alinhamento: 4, valor: 4, viabilidade: 5, tempo: 4, criticidade: 2 },
   },
   {
-    codigo: 'USE-F2',
-    nome: 'Two lighthouse use cases with a 90-day proof',
-    problema: 'Nothing has reached production, so confidence and sponsorship are fragile.',
-    beneficio: 'Two visible wins that create internal appetite and evidence for the next budget cycle.',
+    id: 'IN04',
     dimensao: 'usecases',
-    tier: 'foundation',
-    urgencia: 3,
-    esforco: 'medium',
-    proximo_passo: 'Pick the two highest-value, lowest-dependency items and staff them as products, not projects.',
-    kpi: 'Two use cases in production · baseline and post-launch KPI measured',
+    refs: ['USC01', 'USC04'],
+    nome: 'Intelligent Process Automation',
+    categoria: 'transformation',
+    trigger: 'High manual effort, operational delays or rework',
+    problema: 'Repetitive, error-prone work consumes capacity and pushes cycle time beyond what the business needs.',
+    beneficio: 'Automated handling of the repetitive steps, with measurable reduction in cycle time and error rate.',
+    outcome: 'Operational efficiency',
+    kpi: 'Processing time, cost per transaction, error rate, hours released',
+    proximo_passo: 'Pick the highest-volume process named in the interview and instrument its current baseline.',
+    foundation: false,
+    factors: { impacto: 5, alinhamento: 4, valor: 5, viabilidade: 4, tempo: 4, criticidade: 2 },
   },
   {
-    codigo: 'USE-C1',
-    nome: 'Reusable use-case delivery playbook',
-    problema: 'Every initiative restarts from zero with its own discovery, data and deployment ritual.',
-    beneficio: 'A repeatable path from idea to production that cuts delivery time per use case.',
+    id: 'IN05',
     dimensao: 'usecases',
-    tier: 'core',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Document the path used by the lighthouse cases and make it the default for the next five.',
-    kpi: 'Time from approval to production reduced by 30%',
+    refs: ['USC02'],
+    nome: 'AI Concierge & Customer Service',
+    categoria: 'transformation',
+    trigger: 'Repetitive inquiries and service experience gaps',
+    problema: 'High volumes of repetitive contacts degrade response time and customer satisfaction.',
+    beneficio: 'Round-the-clock first-line resolution with consistent answers and escalation only when needed.',
+    outcome: 'Customer experience',
+    kpi: 'First-contact resolution, containment rate, CSAT, average handling time',
+    proximo_passo: 'Baseline the top twenty contact reasons and the share that a grounded assistant can resolve.',
+    foundation: false,
+    factors: { impacto: 5, alinhamento: 4, valor: 5, viabilidade: 4, tempo: 5, criticidade: 2 },
   },
   {
-    codigo: 'USE-S1',
-    nome: 'Scaled portfolio with product owners',
-    problema: 'The portfolio grew faster than the capacity to own it.',
-    beneficio: 'Each use case has an owner, a roadmap and a lifecycle from pilot to retirement.',
+    id: 'IN06',
     dimensao: 'usecases',
-    tier: 'scale',
-    urgencia: 2,
-    esforco: 'high',
-    proximo_passo: 'Assign a business product owner per live use case and review the portfolio monthly.',
-    kpi: 'Every production use case with a named owner and quarterly roadmap',
+    refs: ['USC03', 'DAT01'],
+    nome: 'Enterprise Knowledge Assistant / RAG',
+    categoria: 'transformation',
+    trigger: 'Fragmented knowledge and inefficient information retrieval',
+    problema: 'Answers are locked in documents and spread across repositories, so people search instead of deciding.',
+    beneficio: 'Grounded answers with citations over internal knowledge, available where the decision is made.',
+    outcome: 'Productivity and decision speed',
+    kpi: 'Time to answer, search success rate, hours released, answer accuracy on a fixed test set',
+    proximo_passo: 'Index the most-consulted document sets and validate answer quality against real questions.',
+    foundation: false,
+    factors: { impacto: 5, alinhamento: 4, valor: 5, viabilidade: 4, tempo: 4, criticidade: 2 },
+    gate: (ctx) => {
+      const d = lvl(ctx, 'DAT03')
+      return d === null || d <= 3
+    },
   },
   {
-    codigo: 'USE-O1',
-    nome: 'Autonomous optimisation of live models',
-    problema: 'Deployed models are not retrained or re-evaluated once they go live.',
-    beneficio: 'Sustained accuracy and value instead of slow drift after launch.',
+    id: 'IN07',
     dimensao: 'usecases',
-    tier: 'optimize',
-    urgencia: 1,
-    esforco: 'high',
-    proximo_passo: 'Introduce scheduled drift monitoring and a retraining trigger per production model.',
-    kpi: 'Drift alerts configured · retraining cadence defined per model',
+    refs: ['USC03', 'DAT02'],
+    nome: 'Predictive AI & Decision Intelligence',
+    categoria: 'transformation',
+    trigger: 'Forecasting, analytical or decision-making limitations',
+    problema: 'Decisions that depend on forecasts or scoring are made on intuition or stale spreadsheets.',
+    beneficio: 'Quantified predictions embedded in the decision, with accuracy tracked over time.',
+    outcome: 'Decision quality and forecast accuracy',
+    kpi: 'Forecast accuracy, decision cycle time, variance against plan',
+    proximo_passo: 'Identify the decision with the highest economic exposure and the data available to model it.',
+    foundation: false,
+    factors: { impacto: 5, alinhamento: 4, valor: 4, viabilidade: 3, tempo: 3, criticidade: 2 },
+    gate: (ctx) => {
+      const d = lvl(ctx, 'DAT02')
+      return d !== null && d >= 2
+    },
+  },
+  {
+    id: 'IN08',
+    dimensao: 'usecases',
+    refs: ['USC04', 'TEC02', 'SEC04'],
+    nome: 'Agentic AI & Workflow Orchestration',
+    categoria: 'transformation',
+    trigger: 'Multi-step workflows suitable for controlled automation',
+    problema: 'Multi-step processes need a human to move data between systems and make routine judgements.',
+    beneficio: 'Orchestrated execution across systems with bounded actions and a human approval where it matters.',
+    outcome: 'Operational efficiency and service availability',
+    kpi: 'End-to-end cycle time, autonomous completion rate, exception rate',
+    proximo_passo: 'Select one bounded multi-step workflow and define the actions an agent may take unattended.',
+    foundation: false,
+    factors: { impacto: 5, alinhamento: 4, valor: 4, viabilidade: 2, tempo: 3, criticidade: 4 },
+    gate: (ctx) => {
+      const integ = lvl(ctx, 'TEC02')
+      const ctrl = lvl(ctx, 'SEC04')
+      // Only when integration and pre-deployment review already have some footing.
+      return (integ === null || integ >= 2) && (ctrl === null || ctrl >= 2)
+    },
+  },
+  {
+    id: 'IN09',
+    dimensao: 'usecases',
+    refs: ['USC01', 'USC03', 'DAT01'],
+    nome: 'AI Document Intelligence',
+    categoria: 'transformation',
+    trigger: 'Document-intensive business processes',
+    problema: 'Contracts, claims and forms are read manually, which is slow, inconsistent and hard to audit.',
+    beneficio: 'Structured extraction with confidence scores and human review only on the exceptions.',
+    outcome: 'Processing time and cost per transaction',
+    kpi: 'Documents processed per hour, extraction accuracy, rework rate',
+    proximo_passo: 'Quantify the document volume in the priority process and the cost of reading it today.',
+    foundation: false,
+    factors: { impacto: 5, alinhamento: 3, valor: 5, viabilidade: 4, tempo: 4, criticidade: 2 },
   },
 
-  // ── Data and Knowledge ─────────────────────────────────────────────────────
+  // ── Data ───────────────────────────────────────────────────────────────────
   {
-    codigo: 'DAT-F1',
-    nome: 'Critical data inventory',
-    problema: 'Nobody can say which data exists, where it lives or who owns it.',
-    beneficio: 'A short catalogue of the data that actually feeds AI, with an owner per domain.',
+    id: 'IN10',
     dimensao: 'data',
-    tier: 'foundation',
-    urgencia: 3,
-    esforco: 'low',
-    proximo_passo: 'Catalogue the sources behind the first two use cases and assign a data owner per domain.',
-    kpi: 'Top 10 sources catalogued with owner, freshness and quality note',
+    refs: ['DAT01', 'DAT02', 'DAT03', 'DAT04', 'DAT05'],
+    nome: 'Data Management Assessment',
+    categoria: 'enabling',
+    trigger: 'Insufficient understanding of data capabilities',
+    problema: 'It is not known which data exists, where it lives or whether it is usable for AI.',
+    beneficio: 'A factual picture of the data landscape with the dependencies each use case actually has.',
+    outcome: 'Data readiness',
+    kpi: 'Critical data domains catalogued · owner per domain · quality baseline published',
+    proximo_passo: 'Catalogue the sources behind the priority use cases and assign an owner per domain.',
+    foundation: false,
+    factors: { impacto: 3, alinhamento: 3, valor: 4, viabilidade: 5, tempo: 5, criticidade: 4 },
   },
   {
-    codigo: 'DAT-F2',
-    nome: 'Data quality baseline for the priority domain',
-    problema: 'Quality problems are discovered during the project, not before it.',
-    beneficio: 'A measured baseline so scope and cost are realistic before build starts.',
+    id: 'IN11',
     dimensao: 'data',
-    tier: 'foundation',
-    urgencia: 3,
-    esforco: 'medium',
-    proximo_passo: 'Profile completeness, duplication and timeliness on the domain that feeds the priority use case.',
-    kpi: 'Baseline published · acceptance thresholds agreed with the business',
+    refs: ['DAT02', 'DAT04'],
+    nome: 'Data Quality & Governance',
+    categoria: 'enabling',
+    trigger: 'Unreliable data or undefined ownership',
+    problema: 'No measurable quality standard and no accountable owner, so every model inherits the defects.',
+    beneficio: 'Defined ownership, measurable quality thresholds and defects fixed at the source.',
+    outcome: 'Trusted data',
+    kpi: 'Data quality score, % of critical domains with owner, defect resolution time',
+    proximo_passo: 'Measure completeness, duplication and timeliness on the priority domain and publish the baseline.',
+    foundation: true,
+    factors: { impacto: 4, alinhamento: 3, valor: 4, viabilidade: 4, tempo: 3, criticidade: 5 },
   },
   {
-    codigo: 'DAT-C1',
-    nome: 'Governed data access layer',
-    problema: 'Each team extracts data its own way, producing conflicting numbers.',
-    beneficio: 'One governed path to curated data with lineage and access control.',
+    id: 'IN12',
     dimensao: 'data',
-    tier: 'core',
-    urgencia: 2,
-    esforco: 'high',
+    refs: ['DAT03', 'DAT05'],
+    nome: 'AI-ready Data Platform',
+    categoria: 'enabling',
+    trigger: 'Fragmented data and limited accessibility',
+    problema: 'Each team extracts and reshapes data its own way, producing conflicting numbers and duplicated effort.',
+    beneficio: 'One governed path to curated, documented data that AI applications can rely on.',
+    outcome: 'Data accessibility',
+    kpi: 'Priority domains served through the governed layer · lineage documented · preparation time',
     proximo_passo: 'Publish the priority domain as a curated dataset with documented lineage and permissions.',
-    kpi: 'Priority domain served through the governed layer · lineage documented',
+    foundation: false,
+    factors: { impacto: 4, alinhamento: 3, valor: 4, viabilidade: 3, tempo: 2, criticidade: 4 },
   },
   {
-    codigo: 'DAT-C2',
-    nome: 'Retrieval layer over internal knowledge',
-    problema: 'Policy, contract and technical knowledge is locked in documents nobody can search.',
-    beneficio: 'Grounded answers over internal knowledge, with citations, for support and operations.',
+    id: 'IN13',
     dimensao: 'data',
-    tier: 'core',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Index the ten most-consulted document sets and validate answer quality with real users.',
-    kpi: 'Top 10 document sets indexed · answer accuracy validated on a 50-question set',
-  },
-  {
-    codigo: 'DAT-S1',
-    nome: 'Master data and quality SLAs',
-    problema: 'Quality is repaired project by project instead of being guaranteed upstream.',
-    beneficio: 'Data that is fit for AI by contract, not by heroics.',
-    dimensao: 'data',
-    tier: 'scale',
-    urgencia: 2,
-    esforco: 'high',
-    proximo_passo: 'Agree quality SLAs with the source-system owners and monitor them on a dashboard.',
-    kpi: 'Quality SLAs signed for the five critical domains · monthly monitoring live',
-  },
-  {
-    codigo: 'DAT-O1',
-    nome: 'Feature store and reusable data products',
-    problema: 'The same features are rebuilt for every model.',
-    beneficio: 'Shared, versioned features that cut build time and improve consistency.',
-    dimensao: 'data',
-    tier: 'optimize',
-    urgencia: 1,
-    esforco: 'high',
-    proximo_passo: 'Move the features used by more than one model into a versioned, documented store.',
-    kpi: 'Shared features reused by 2+ models · versioning and documentation in place',
+    refs: ['DAT03', 'DAT04', 'DAT05'],
+    nome: 'Data Integration & AI Pipelines',
+    categoria: 'enabling',
+    trigger: 'Data preparation and integration barriers',
+    problema: 'Getting data from source to model is a manual project every time, which caps how many use cases can scale.',
+    beneficio: 'Repeatable pipelines with freshness guarantees, so new use cases start from a working feed.',
+    outcome: 'Data freshness and preparation time',
+    kpi: 'Pipeline coverage, data freshness, data preparation time per use case',
+    proximo_passo: 'Automate the two pipelines that the lighthouse use cases depend on and monitor their freshness.',
+    foundation: false,
+    factors: { impacto: 3, alinhamento: 3, valor: 4, viabilidade: 3, tempo: 3, criticidade: 3 },
   },
 
-  // ── Technology and Architecture ────────────────────────────────────────────
+  // ── Technology ─────────────────────────────────────────────────────────────
   {
-    codigo: 'TEC-F1',
-    nome: 'Approved AI tooling and guardrails',
-    problema: 'Teams adopt tools freely, with no control over data leaving the organisation.',
-    beneficio: 'A short approved list plus blocking controls for unsanctioned tools.',
+    id: 'IN14',
     dimensao: 'tech',
-    tier: 'foundation',
-    urgencia: 3,
-    esforco: 'low',
-    proximo_passo: 'Publish the approved tool list and enable the corresponding tenant and DLP controls.',
-    kpi: 'Approved list published · shadow-AI usage reduced to a measured baseline',
+    refs: ['TEC01', 'TEC04', 'TEC05'],
+    nome: 'AI Architecture & Infrastructure',
+    categoria: 'enabling',
+    trigger: 'Architecture gaps preventing AI implementation',
+    problema: 'There is no reference architecture, so each initiative invents its own and the estate fragments.',
+    beneficio: 'A documented target architecture with the integration and hosting patterns the next use cases will reuse.',
+    outcome: 'Technology readiness',
+    kpi: 'Reference architecture published · reused by the next initiative',
+    proximo_passo: 'Document the architecture of the first live use case as the standard reference for the rest.',
+    foundation: false,
+    factors: { impacto: 3, alinhamento: 3, valor: 3, viabilidade: 4, tempo: 3, criticidade: 4 },
   },
   {
-    codigo: 'TEC-F2',
-    nome: 'Reference architecture for one AI pattern',
-    problema: 'Every build invents its own integration and deployment approach.',
-    beneficio: 'One documented pattern the next three use cases can copy.',
+    id: 'IN15',
     dimensao: 'tech',
-    tier: 'foundation',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Document the architecture used by the lighthouse case as the standard reference.',
-    kpi: 'Reference architecture published · reused by the next use case',
+    refs: ['TEC02', 'TEC03'],
+    nome: 'Enterprise AI Integration Platform',
+    categoria: 'enabling',
+    trigger: 'Limited application and workflow integration',
+    problema: 'Systems exchange information through manual steps, so AI cannot act where the work happens.',
+    beneficio: 'Reusable integration and orchestration services that any use case can call.',
+    outcome: 'Process automation and integration coverage',
+    kpi: 'Integration coverage, deployment time, number of systems reachable through the platform',
+    proximo_passo: 'Expose the three systems behind the priority workflow through governed APIs.',
+    foundation: false,
+    factors: { impacto: 4, alinhamento: 3, valor: 4, viabilidade: 3, tempo: 2, criticidade: 4 },
   },
   {
-    codigo: 'TEC-C1',
-    nome: 'Model gateway and cost observability',
-    problema: 'Spend and latency are invisible until the invoice arrives.',
-    beneficio: 'Per-use-case cost, latency and fallback control in one place.',
+    id: 'IN16',
     dimensao: 'tech',
-    tier: 'core',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Route model calls through a gateway that logs cost and latency per use case.',
-    kpi: 'Cost per use case visible · monthly spend within forecast',
+    refs: ['TEC04', 'TEC05', 'SEC02'],
+    nome: 'Private AI / AI Inference Server',
+    categoria: 'enabling',
+    trigger: 'Validated sovereignty, latency or deployment requirements',
+    problema: 'Data residency, latency or regulatory constraints prevent workloads from running on public endpoints.',
+    beneficio: 'Inference inside the required boundary, with predictable latency and no data egress.',
+    outcome: 'Deployment flexibility and compliance',
+    kpi: 'Workloads meeting residency requirement · p95 latency · egress incidents',
+    proximo_passo: 'Confirm which use cases genuinely require in-boundary inference before committing to infrastructure.',
+    foundation: false,
+    factors: { impacto: 3, alinhamento: 3, valor: 2, viabilidade: 2, tempo: 1, criticidade: 4 },
+    // Only surfaced when the organisation declared a real technical constraint.
+    gate: (ctx) => {
+      const limitation = lvl(ctx, 'TEC04')
+      return limitation !== null && limitation <= 2
+    },
   },
   {
-    codigo: 'TEC-C2',
-    nome: 'Evaluation harness before release',
-    problema: 'Quality is judged by demo impressions, not by measurement.',
-    beneficio: 'A repeatable test set that gates every release.',
+    id: 'IN17',
     dimensao: 'tech',
-    tier: 'core',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Build a 100-case evaluation set per use case and make it a release gate.',
-    kpi: 'Evaluation set per use case · no release without a passing score',
-  },
-  {
-    codigo: 'TEC-S1',
-    nome: 'MLOps pipeline with automated deployment',
-    problema: 'Release is a manual, fragile ritual performed by one person.',
-    beneficio: 'Repeatable, auditable deployment with rollback.',
-    dimensao: 'tech',
-    tier: 'scale',
-    urgencia: 2,
-    esforco: 'high',
-    proximo_passo: 'Introduce CI/CD with versioned artefacts and automated rollback for the live models.',
-    kpi: 'Automated deployment for 100% of production models · rollback tested',
-  },
-  {
-    codigo: 'TEC-O1',
-    nome: 'Multi-model routing and resilience',
-    problema: 'A single provider outage or price change hits every use case at once.',
-    beneficio: 'Provider-independent operation with graceful degradation.',
-    dimensao: 'tech',
-    tier: 'optimize',
-    urgencia: 1,
-    esforco: 'high',
-    proximo_passo: 'Introduce a routing layer with a secondary provider and tested failover per use case.',
-    kpi: 'Failover exercised quarterly · no single-provider dependency in critical paths',
+    refs: ['TEC01', 'TEC03', 'TEC05'],
+    nome: 'Hybrid AI Architecture',
+    categoria: 'enabling',
+    trigger: 'Validated need for multiple AI execution environments',
+    problema: 'Some workloads belong in the cloud and some cannot leave the estate, and today there is no common pattern.',
+    beneficio: 'One operating model across cloud, on-premises and edge, with consistent deployment and control.',
+    outcome: 'Scalability and deployment flexibility',
+    kpi: 'Workloads deployed consistently across environments · deployment time',
+    proximo_passo: 'Classify live and planned workloads by environment before designing the hybrid pattern.',
+    foundation: false,
+    factors: { impacto: 3, alinhamento: 3, valor: 2, viabilidade: 2, tempo: 2, criticidade: 3 },
   },
 
-  // ── Security, Risk and Governance ──────────────────────────────────────────
+  // ── Security ───────────────────────────────────────────────────────────────
   {
-    codigo: 'SEC-F1',
-    nome: 'AI acceptable-use policy',
-    problema: 'People already use generative tools with no written rule on data and outputs.',
-    beneficio: 'Clear, short rules that remove ambiguity without blocking adoption.',
+    id: 'IN18',
     dimensao: 'security',
-    tier: 'foundation',
-    urgencia: 3,
-    esforco: 'low',
-    proximo_passo: 'Publish a two-page policy, brief every team and require acknowledgement.',
-    kpi: 'Policy published · 100% acknowledgement from staff using AI tools',
+    refs: ['SEC01'],
+    nome: 'Shadow AI Discovery & Management',
+    categoria: 'enabling',
+    trigger: 'Unmanaged or unauthorized AI usage',
+    problema: 'Employees already use external AI tools with company data, and nobody sees which or with what.',
+    beneficio: 'Visibility of actual AI usage, with the risky services blocked and safe alternatives offered.',
+    outcome: 'Data protection',
+    kpi: 'Shadow AI services identified · sanctioned coverage · data-egress incidents',
+    proximo_passo: 'Discover actual AI usage from network and identity telemetry before writing the policy.',
+    foundation: true,
+    factors: { impacto: 4, alinhamento: 4, valor: 4, viabilidade: 4, tempo: 5, criticidade: 5 },
   },
   {
-    codigo: 'SEC-F2',
-    nome: 'AI risk inventory and classification',
-    problema: 'Nobody knows which AI systems are in use, or how risky each one is.',
-    beneficio: 'A register with a risk tier per system, and the obligations that follow from it.',
+    id: 'IN19',
     dimensao: 'security',
-    tier: 'foundation',
-    urgencia: 3,
-    esforco: 'medium',
-    proximo_passo: 'Register every AI system in use and classify it as low, medium or high risk.',
-    kpi: 'Register covering 100% of known systems · risk tier assigned',
+    refs: ['SEC02', 'SEC04'],
+    nome: 'AI Governance Framework',
+    categoria: 'enabling',
+    trigger: 'Missing AI policies, accountability or risk controls',
+    problema: 'No acceptable-use policy, no risk classification and no pre-deployment review gate.',
+    beneficio: 'Written rules, a risk tier per system and a review that happens before production, not after an incident.',
+    outcome: 'Risk reduction and governance coverage',
+    kpi: 'Policy published and acknowledged · risk tier per system · review gate on 100% of deployments',
+    proximo_passo: 'Publish a short acceptable-use policy and a pre-deployment review checklist, then apply both.',
+    foundation: true,
+    factors: { impacto: 4, alinhamento: 4, valor: 4, viabilidade: 5, tempo: 5, criticidade: 5 },
   },
   {
-    codigo: 'SEC-C1',
-    nome: 'Human review gate for high-impact decisions',
-    problema: 'Model output reaches customers or employees without a review step.',
-    beneficio: 'A documented human-in-the-loop control where the impact is material.',
+    id: 'IN20',
     dimensao: 'security',
-    tier: 'core',
-    urgencia: 3,
-    esforco: 'medium',
-    proximo_passo: 'Define which decisions require review and implement the approval step in the workflow.',
-    kpi: 'Review gate enforced for 100% of high-impact use cases',
+    refs: ['SEC03', 'SEC05', 'TEC03'],
+    nome: 'AI Security & AI Gateway',
+    categoria: 'enabling',
+    trigger: 'AI-specific security and policy enforcement gaps',
+    problema: 'Model calls are not inspected, so prompt injection, leakage and unsafe output travel unmonitored.',
+    beneficio: 'A single enforcement point for policy, logging and inspection across every AI call.',
+    outcome: 'AI security and control',
+    kpi: 'AI traffic through the gateway · blocked violations · incident detection time',
+    proximo_passo: 'Route model calls through a gateway that logs, inspects and enforces policy centrally.',
+    foundation: false,
+    factors: { impacto: 4, alinhamento: 3, valor: 4, viabilidade: 3, tempo: 3, criticidade: 4 },
   },
   {
-    codigo: 'SEC-C2',
-    nome: 'Privacy and data protection impact review',
-    problema: 'Personal data enters models without a documented lawful basis.',
-    beneficio: 'Documented basis and minimisation per use case, defensible in an audit.',
+    id: 'IN21',
     dimensao: 'security',
-    tier: 'core',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Run a DPIA for each use case that touches personal data before it goes live.',
-    kpi: 'DPIA completed for every personal-data use case',
-  },
-  {
-    codigo: 'SEC-S1',
-    nome: 'Continuous model monitoring and audit trail',
-    problema: 'After launch there is no evidence of behaviour, drift or incident handling.',
-    beneficio: 'Traceable decisions and drift alerts that satisfy auditors and clients.',
-    dimensao: 'security',
-    tier: 'scale',
-    urgencia: 2,
-    esforco: 'high',
-    proximo_passo: 'Log inputs, outputs and decisions per model and alert on drift and on anomalous behaviour.',
-    kpi: 'Audit trail for 100% of production models · drift alerting live',
-  },
-  {
-    codigo: 'SEC-O1',
-    nome: 'Red teaming and adversarial testing',
-    problema: 'Prompt injection and data exfiltration paths are never deliberately attacked.',
-    beneficio: 'Known weaknesses fixed before an adversary finds them.',
-    dimensao: 'security',
-    tier: 'optimize',
-    urgencia: 1,
-    esforco: 'high',
-    proximo_passo: 'Run a structured red-team exercise per critical use case before each major release.',
-    kpi: 'Red team per critical use case · findings closed before release',
+    refs: ['SEC03', 'SEC04', 'SEC05', 'USC04'],
+    nome: 'Agentic AI Security & Governance',
+    categoria: 'enabling',
+    trigger: 'Agents requiring controlled access and action boundaries',
+    problema: 'Agents that can act on systems need permissions, audit and a stop condition before they are deployed.',
+    beneficio: 'Bounded action scope, on-behalf-of identity, full audit trail and a tested kill switch.',
+    outcome: 'Autonomy with controlled blast radius',
+    kpi: 'Agents with scoped credentials · actions logged · kill switch tested',
+    proximo_passo: 'Define the allowed action scope and the audit requirement for each agent before any autonomy.',
+    foundation: false,
+    factors: { impacto: 4, alinhamento: 3, valor: 3, viabilidade: 3, tempo: 2, criticidade: 5 },
+    gate: (ctx) => {
+      const review = lvl(ctx, 'SEC04')
+      return review !== null && review >= 1
+    },
   },
 
-  // ── People and Culture ─────────────────────────────────────────────────────
+  // ── People ─────────────────────────────────────────────────────────────────
   {
-    codigo: 'PEO-F1',
-    nome: 'AI literacy baseline for all staff',
-    problema: 'Adoption is uneven and depends on individual enthusiasm.',
-    beneficio: 'A shared vocabulary and a consistent minimum standard across the organisation.',
+    id: 'IN22',
     dimensao: 'people',
-    tier: 'foundation',
-    urgencia: 3,
-    esforco: 'low',
-    proximo_passo: 'Deliver a short mandatory module and measure the baseline before and after.',
-    kpi: '80% of staff completed · post-training assessment passed',
+    refs: ['PEO01', 'PEO02'],
+    nome: 'AI Literacy & Workforce Enablement',
+    categoria: 'enabling',
+    trigger: 'Limited AI skills and awareness',
+    problema: 'Capability is concentrated in a few enthusiasts, so adoption depends on who happens to be available.',
+    beneficio: 'A measured baseline and a role-based curriculum for the teams that will actually use AI.',
+    outcome: 'Workforce productivity',
+    kpi: 'Baseline literacy score · completion rate · active AI users',
+    proximo_passo: 'Measure the literacy baseline and design a hands-on track for the two priority roles.',
+    foundation: false,
+    factors: { impacto: 4, alinhamento: 3, valor: 4, viabilidade: 5, tempo: 4, criticidade: 3 },
   },
   {
-    codigo: 'PEO-F2',
-    nome: 'Role-based enablement for the priority teams',
-    problema: 'Generic training does not change how a specific team works.',
-    beneficio: 'Practical capability in the two teams that will actually use the first use cases.',
+    id: 'IN23',
     dimensao: 'people',
-    tier: 'foundation',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Design a hands-on track per role and embed it in the team’s weekly ritual.',
-    kpi: 'Two priority teams enabled · weekly usage measured',
+    refs: ['PEO03', 'SEC01', 'SEC02'],
+    nome: 'Governed AI Workspace',
+    categoria: 'enabling',
+    trigger: 'Employee AI demand without approved enterprise tools',
+    problema: 'Staff want to use AI, are not given approved tools, and fill the gap with unsanctioned services.',
+    beneficio: 'Sanctioned tools with guardrails, so demand is met inside the perimeter instead of outside it.',
+    outcome: 'Secure AI adoption',
+    kpi: 'Sanctioned tool coverage · shadow usage trend · user satisfaction',
+    proximo_passo: 'Publish the approved tool list and enable the tenant and data-protection controls that enforce it.',
+    foundation: false,
+    factors: { impacto: 4, alinhamento: 3, valor: 4, viabilidade: 4, tempo: 5, criticidade: 4 },
   },
   {
-    codigo: 'PEO-C1',
-    nome: 'Internal AI champions network',
-    problema: 'Knowledge stays with a few individuals and does not spread.',
-    beneficio: 'A distributed network that supports peers and surfaces new opportunities.',
+    id: 'IN24',
     dimensao: 'people',
-    tier: 'core',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Formalise one champion per business unit with time allocated and a monthly forum.',
-    kpi: 'One champion per unit · monthly forum with documented use cases',
-  },
-  {
-    codigo: 'PEO-C2',
-    nome: 'New ways of working for AI-assisted roles',
-    problema: 'People are given tools without their processes or targets being reconsidered.',
-    beneficio: 'Redesigned workflows that capture the productivity gain instead of losing it.',
-    dimensao: 'people',
-    tier: 'core',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Redesign two workflows end to end and update targets and job descriptions accordingly.',
-    kpi: 'Two workflows redesigned · productivity gain measured and banked',
-  },
-  {
-    codigo: 'PEO-S1',
-    nome: 'Career paths and incentives for AI skills',
-    problema: 'Specialists leave because there is no recognised progression.',
-    beneficio: 'Retention and internal growth instead of permanent external hiring.',
-    dimensao: 'people',
-    tier: 'scale',
-    urgencia: 2,
-    esforco: 'high',
-    proximo_passo: 'Define a technical and a managerial track, with recognition tied to delivered value.',
-    kpi: 'Career framework published · attrition among AI roles below company average',
-  },
-  {
-    codigo: 'PEO-O1',
-    nome: 'Communities of practice across units',
-    problema: 'Each unit relearns what another already solved.',
-    beneficio: 'Reuse of patterns and faster adoption of what already works.',
-    dimensao: 'people',
-    tier: 'optimize',
-    urgencia: 1,
-    esforco: 'medium',
-    proximo_passo: 'Create two communities of practice with a shared repository and a quarterly review.',
-    kpi: 'Two active communities · documented patterns reused across units',
+    refs: ['PEO04', 'PEO05'],
+    nome: 'AI Adoption & Change Management',
+    categoria: 'enabling',
+    trigger: 'Workflow transformation and adoption gaps',
+    problema: 'Tools arrive without the workflow, targets or incentives being reconsidered, so productivity gains evaporate.',
+    beneficio: 'Redesigned workflows with updated targets, so the gain is captured and stays.',
+    outcome: 'Measured adoption and workforce transformation',
+    kpi: 'Adoption rate · hours released · productivity improvement in redesigned roles',
+    proximo_passo: 'Redesign two workflows end to end and update the targets and job descriptions with them.',
+    foundation: false,
+    factors: { impacto: 4, alinhamento: 3, valor: 4, viabilidade: 4, tempo: 3, criticidade: 3 },
   },
 
-  // ── Economics and Investment ───────────────────────────────────────────────
+  // ── Economics ──────────────────────────────────────────────────────────────
   {
-    codigo: 'ECO-F1',
-    nome: 'Cost visibility for AI consumption',
-    problema: 'Token and infrastructure cost is invisible until the invoice arrives.',
-    beneficio: 'Cost per use case and per unit of output, visible monthly.',
+    id: 'IN25',
     dimensao: 'economics',
-    tier: 'foundation',
-    urgencia: 3,
-    esforco: 'low',
+    refs: ['ECO01', 'ECO02'],
+    nome: 'AI Business Value & ROI Framework',
+    categoria: 'enabling',
+    trigger: 'Missing quantitative investment justification',
+    problema: 'Investments are approved on narrative, with no standard case, cost model or payback requirement.',
+    beneficio: 'One template with benefits, costs, ROI and payback, applied to every request before funding.',
+    outcome: 'Investment effectiveness',
+    kpi: 'Business case coverage · ROI accuracy against realised value',
+    proximo_passo: 'Adopt a single business-case template and apply it to the requests already in the queue.',
+    foundation: true,
+    factors: { impacto: 4, alinhamento: 4, valor: 4, viabilidade: 5, tempo: 4, criticidade: 4 },
+  },
+  {
+    id: 'IN26',
+    dimensao: 'economics',
+    refs: ['ECO04'],
+    nome: 'AI FinOps & Governance',
+    categoria: 'enabling',
+    trigger: 'Limited visibility and control of AI consumption costs',
+    problema: 'Token and infrastructure cost is invisible until the invoice arrives, and cannot be allocated.',
+    beneficio: 'Cost per use case and per unit of output, visible monthly and attributable to an owner.',
+    outcome: 'Cost optimization',
+    kpi: 'Cost per use case · forecast accuracy · consumption variance explained',
     proximo_passo: 'Tag every AI workload and publish a monthly cost report per use case.',
-    kpi: 'Cost per use case published monthly · variance explained',
+    foundation: false,
+    factors: { impacto: 3, alinhamento: 3, valor: 4, viabilidade: 4, tempo: 4, criticidade: 3 },
   },
   {
-    codigo: 'ECO-F2',
-    nome: 'Business case template with benefit tracking',
-    problema: 'Approval happens on estimates that are never revisited.',
-    beneficio: 'A standard case with a measured benefit review at 90 and 180 days.',
+    id: 'IN27',
     dimensao: 'economics',
-    tier: 'foundation',
-    urgencia: 2,
-    esforco: 'low',
-    proximo_passo: 'Adopt one template for every AI request and schedule the benefit review at approval.',
-    kpi: '100% of AI requests with a business case · benefit review scheduled',
+    refs: ['ECO05'],
+    nome: 'AI Benefits Realization',
+    categoria: 'enabling',
+    trigger: 'Lack of actual business outcome measurement',
+    problema: 'Benefits are claimed at approval and never measured, so the next investment is another guess.',
+    beneficio: 'Realised value measured against the original case, feeding the next funding decision.',
+    outcome: 'Realized business value',
+    kpi: '% of funded initiatives with a benefit review · variance against business case',
+    proximo_passo: 'Schedule a benefit review at 90 and 180 days for every funded initiative.',
+    foundation: false,
+    factors: { impacto: 4, alinhamento: 3, valor: 4, viabilidade: 4, tempo: 3, criticidade: 3 },
   },
   {
-    codigo: 'ECO-C1',
-    nome: 'Unit economics per use case',
-    problema: 'Nobody can say what a transaction or an answer actually costs.',
-    beneficio: 'Pricing, prioritisation and scaling decisions grounded in real unit cost.',
+    id: 'IN28',
     dimensao: 'economics',
-    tier: 'core',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Compute cost per unit of output for the live use cases and compare with the baseline process.',
-    kpi: 'Unit cost known per live use case · margin impact documented',
-  },
-  {
-    codigo: 'ECO-C2',
-    nome: 'Build versus buy decision framework',
-    problema: 'Build-or-buy is decided by preference rather than by total cost.',
-    beneficio: 'A repeatable decision that avoids duplicated platforms and lock-in.',
-    dimensao: 'economics',
-    tier: 'core',
-    urgencia: 2,
-    esforco: 'low',
-    proximo_passo: 'Define criteria including total cost, differentiation and exit cost, and apply them to open requests.',
-    kpi: 'Framework applied to 100% of new AI requests',
-  },
-  {
-    codigo: 'ECO-S1',
-    nome: 'AI budget with quarterly reallocation',
-    problema: 'Budget is annual and fixed, so it cannot follow evidence.',
-    beneficio: 'Money moves towards what proves value and away from what does not.',
-    dimensao: 'economics',
-    tier: 'scale',
-    urgencia: 2,
-    esforco: 'medium',
-    proximo_passo: 'Ring-fence an AI budget line and reallocate 20% of it each quarter based on measured value.',
-    kpi: 'Dedicated AI budget line · quarterly reallocation executed',
-  },
-  {
-    codigo: 'ECO-O1',
-    nome: 'Reinvestment and self-funding model',
-    problema: 'Each wave depends on a new budget round and a new negotiation.',
-    beneficio: 'A share of realised savings funds the next wave automatically.',
-    dimensao: 'economics',
-    tier: 'optimize',
-    urgencia: 1,
-    esforco: 'high',
-    proximo_passo: 'Agree a reinvestment rule with finance and route a share of verified savings back into the portfolio.',
-    kpi: 'Reinvestment rule approved · share of the next wave self-funded',
+    refs: ['ECO02', 'ECO03', 'USC05'],
+    nome: 'AI Proof of Value Program',
+    categoria: 'transformation',
+    trigger: 'High-potential use cases requiring value validation',
+    problema: 'Promising use cases stall because there is no funded, time-boxed way to prove value.',
+    beneficio: 'A short, funded cycle that produces a measured result and a go/no-go decision.',
+    outcome: 'Validated business case',
+    kpi: 'Proofs completed within 90 days · go/no-go decision rate · value validated per proof',
+    proximo_passo: 'Fund two proofs with a fixed 90-day window and a pre-agreed success metric.',
+    foundation: false,
+    factors: { impacto: 5, alinhamento: 4, valor: 5, viabilidade: 5, tempo: 5, criticidade: 2 },
   },
 ]
 
-// ── Index bands ─────────────────────────────────────────────────────────────
+/** Catalogue entries grouped by the dimension they belong to. */
+export const CATALOG_BY_DIM: Record<string, InitiativeDef[]> = INITIATIVE_CATALOG.reduce(
+  (acc, i) => {
+    ;(acc[i.dimensao] ||= []).push(i)
+    return acc
+  },
+  {} as Record<string, InitiativeDef[]>
+)
 
-export type IndexBand = 'early' | 'developing' | 'consolidating' | 'advanced'
+// ── Selection & prioritisation ──────────────────────────────────────────────
 
-export function indexBand(escala5: number): IndexBand {
-  if (escala5 < 1.5) return 'early'
-  if (escala5 < 2.5) return 'developing'
-  if (escala5 < 3.5) return 'consolidating'
-  return 'advanced'
-}
-
-export const BAND_LABEL: Record<IndexBand, string> = {
-  early: 'Early stage',
-  developing: 'Developing',
-  consolidating: 'Consolidating',
-  advanced: 'Advanced',
-}
-
-export const BAND_FOCUS: Record<IndexBand, string> = {
-  early: 'foundations first — governance, literacy and one credible proof of value',
-  developing: 'turn ad-hoc pilots into a repeatable, governed capability',
-  consolidating: 'scale what works and industrialise controls',
-  advanced: 'differentiate through optimisation, resilience and new business models',
-}
-
-/** How much each maturity tier weighs inside each index band. */
-const TIER_WEIGHT: Record<IndexBand, Record<InitiativeTier, number>> = {
-  early: { foundation: 3.2, core: 1.5, scale: 0.5, optimize: 0.15 },
-  developing: { foundation: 2.0, core: 2.8, scale: 1.2, optimize: 0.35 },
-  consolidating: { foundation: 0.7, core: 2.1, scale: 2.8, optimize: 1.3 },
-  advanced: { foundation: 0.15, core: 0.9, scale: 2.1, optimize: 3.0 },
-}
-
-// ── Selection ───────────────────────────────────────────────────────────────
-
-export type GeneratedInitiative = {
-  id: number
-  codigo: string
+export type RecommendedInitiative = {
+  /** Catalog id (IN01…). */
+  id: string
   nome: string
+  categoria: Category
+  dimensao: DimKey
+  dimensaoLabel: string
+  refs: string[]
+  trigger: string
   problema: string
   beneficio: string
-  urgencia: number
-  dimensao: string
-  proximo_passo: string
+  outcome: string
   kpi: string
+  proximo_passo: string
+  /** Weighted priority score, 0–100. */
+  score: number
+  prioridade: Priority
+  /** Why this initiative was triggered for this profile. */
   motivo: string
-  origem: 'metodo'
+  /** Factors used, exposed for the scorecard table. */
+  factors: PriorityFactors & { gap: number }
+  bloqueio: string | null
 }
 
-export type GenerateOptions = {
+export type SelectionOptions = {
   scorecard: ScoreRow[]
-  /** Overall index on the 0–5 scale. */
-  escala5: number
-  vertical?: string | null
+  levelsByRef: Record<string, number | null>
+  /** Max initiatives in the plan. */
   limit?: number
-  /** Max initiatives drawn from a single dimension. */
+  /** Max initiatives drawn from one dimension. */
   perDimensionCap?: number
 }
 
-type Candidate = {
-  template: InitiativeTemplate
-  score: number
-  motivo: string
-}
+const PESO_P: Record<Priority, number> = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 }
 
-function verticalMatches(template: InitiativeTemplate, vertical: string | null | undefined): number {
-  if (!template.verticais || !template.verticais.length) return 0
-  if (!vertical) return 0
-  const v = vertical
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-  const hit = template.verticais.some((tag) => {
-    const t = tag.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    return v.includes(t) || t.includes(v)
-  })
-  return hit ? 0.8 : 0
-}
-
-function reasonFor(row: ScoreRow | undefined, template: InitiativeTemplate, band: IndexBand): string {
-  if (!row) return `Method default for the ${BAND_LABEL[band].toLowerCase()} band.`
-  const level = `L${row.atual}`
-  const target = `L${row.meta}`
-  const gap = row.gap > 0 ? `a gap of ${row.gap} level(s) to the 12-month target (${level} → ${target})` : `no declared gap (${level})`
-  if (row.prioridade === 'Critical') return `${row.short} is at ${level} with ${gap} — critical priority, so this front comes first.`
-  if (row.prioridade === 'High') return `${row.short} is at ${level} with ${gap} — high priority.`
-  return `${row.short} is at ${level} with ${gap}; sequenced after the critical fronts.`
+function motivoFor(row: ScoreRow | undefined, def: InitiativeDef): string {
+  if (!row) return def.trigger
+  const state =
+    row.atual <= 0
+      ? 'not assessed'
+      : `at ${row.atual.toFixed(1)}/5 (${row.short})`
+  if (row.gap <= 0) return `${def.trigger} — declared target already met.`
+  return `${def.trigger}. ${row.short} is ${state}, target ${row.meta}/5, gap ${row.gap.toFixed(1)}.`
 }
 
 /**
- * Picks initiatives from the library for a maturity profile.
+ * Selects and classifies the initiatives for one assessment.
  *
- * Guarantees that every critical dimension and the two widest gaps get at least
- * one representative before the remaining slots are filled by pure relevance,
- * so the plan never ignores the weakest fronts.
+ * Rules, in order:
+ *  1. Eligibility — the dimension must have a gap, or still sit at level ≤ 2.
+ *  2. Foundation override — a critical prerequisite whose dimension is not yet
+ *     established becomes P0 regardless of its computed score.
+ *  3. Both families must be represented when eligible, so the client never
+ *     receives a purely technological roadmap.
+ *  4. Deterministic ordering: priority, then score, then catalogue id.
  */
-export function generateInitiatives(opts: GenerateOptions): GeneratedInitiative[] {
-  const rows = opts.scorecard
-  const band = indexBand(opts.escala5)
-  const limit = Math.max(3, Math.min(10, opts.limit ?? 7))
-  const cap = Math.max(1, Math.min(3, opts.perDimensionCap ?? 2))
+export function selectInitiatives(opts: SelectionOptions): RecommendedInitiative[] {
+  const byDim = new Map(opts.scorecard.map((r) => [r.dimensao, r]))
+  const ctx: SelectionContext = { scorecard: opts.scorecard, levelsByRef: opts.levelsByRef }
+  const limit = Math.max(6, Math.min(14, opts.limit ?? 10))
+  const cap = Math.max(1, Math.min(4, opts.perDimensionCap ?? 3))
 
-  const byDim = new Map<string, ScoreRow>()
-  for (const r of rows) byDim.set(r.dimensao, r)
+  const candidates: RecommendedInitiative[] = []
 
-  const weight = (r: ScoreRow) => 4 - r.atual + r.gap * 1.2 + (r.prioridade === 'Critical' ? 3 : r.prioridade === 'High' ? 1.6 : 0)
+  for (const def of INITIATIVE_CATALOG) {
+    const row = byDim.get(def.dimensao)
+    if (!row) continue
+    const eligible = row.gap >= 1 || row.atual <= 2
+    if (!eligible) continue
+    if (def.gate && !def.gate(ctx)) continue
 
-  const rankDimension = (r: ScoreRow) => weight(r) + (r.prioridade === 'Critical' ? 2 : 0)
+    const gap = row.gap
+    const score = priorityScore(def.factors, gap)
+    const mandatory = def.foundation && row.atual <= 2
+    const prioridade = classifyPriority({ score, mandatoryFoundation: mandatory })
 
-  const candidates: Candidate[] = INITIATIVE_LIBRARY.map((template) => {
-    const row = byDim.get(template.dimensao)
-    const dimWeight = row ? rankDimension(row) : 2
-    const score =
-      TIER_WEIGHT[band][template.tier] * 2.4 +
-      dimWeight * 0.9 +
-      template.urgencia * 0.55 +
-      (template.esforco === 'low' ? 0.5 : template.esforco === 'medium' ? 0.2 : 0) +
-      verticalMatches(template, opts.vertical)
-    return { template, score, motivo: reasonFor(row, template, band) }
-  })
+    candidates.push({
+      id: def.id,
+      nome: def.nome,
+      categoria: def.categoria,
+      dimensao: def.dimensao,
+      dimensaoLabel: DIM_MAP[def.dimensao]?.short || def.dimensao,
+      refs: def.refs,
+      trigger: def.trigger,
+      problema: def.problema,
+      beneficio: def.beneficio,
+      outcome: def.outcome,
+      kpi: def.kpi,
+      proximo_passo: def.proximo_passo,
+      score,
+      prioridade,
+      motivo: motivoFor(row, def),
+      factors: { ...def.factors, gap },
+      bloqueio: null,
+    })
+  }
 
-  // Deterministic order: score, then code, so the same profile always yields the
-  // same plan (reports must be reproducible across regenerations).
-  candidates.sort((a, b) => b.score - a.score || a.template.codigo.localeCompare(b.template.codigo))
+  candidates.sort(
+    (a, b) => PESO_P[a.prioridade] - PESO_P[b.prioridade] || b.score - a.score || a.id.localeCompare(b.id)
+  )
 
-  const chosen: Candidate[] = []
-  const taken = new Set<string>()
+  const chosen: RecommendedInitiative[] = []
   const perDim = new Map<string, number>()
+  const has = (id: string) => chosen.some((c) => c.id === id)
 
-  const take = (cand: Candidate) => {
-    if (taken.has(cand.template.codigo)) return false
-    if ((perDim.get(cand.template.dimensao) || 0) >= cap) return false
-    taken.add(cand.template.codigo)
-    perDim.set(cand.template.dimensao, (perDim.get(cand.template.dimensao) || 0) + 1)
-    chosen.push(cand)
+  const take = (c: RecommendedInitiative) => {
+    if (has(c.id)) return false
+    if ((perDim.get(c.dimensao) || 0) >= cap) return false
+    perDim.set(c.dimensao, (perDim.get(c.dimensao) || 0) + 1)
+    chosen.push(c)
     return true
   }
 
-  // 1 — coverage: critical dimensions first, then the widest gaps.
-  const coverageOrder = [...rows]
-    .filter((r) => r.prioridade === 'Critical' || r.gap >= 2)
-    .sort((a, b) => rankDimension(b) - rankDimension(a))
+  // Coverage: at least three enabling and two transformation initiatives, so the
+  // roadmap shows both the conditions and the business results.
+  const takeFrom = (cat: Category, n: number) => {
+    let taken = 0
+    for (const c of candidates) {
+      if (taken >= n || chosen.length >= limit) break
+      if (c.categoria !== cat || has(c.id)) continue
+      if (take(c)) taken++
+    }
+  }
+  takeFrom('enabling', 3)
+  takeFrom('transformation', 2)
 
-  for (const row of coverageOrder) {
+  for (const c of candidates) {
     if (chosen.length >= limit) break
-    const best = candidates.find((c) => c.template.dimensao === row.dimensao && !taken.has(c.template.codigo))
-    if (best) take(best)
+    take(c)
   }
 
-  // 2 — fill the remaining slots by relevance.
-  for (const cand of candidates) {
-    if (chosen.length >= limit) break
-    take(cand)
-  }
-
-  // 3 — if the cap still left slots open, relax it.
+  // Relax the per-dimension cap if the catalog could not fill the plan.
   if (chosen.length < limit) {
-    for (const cand of candidates) {
+    for (const c of candidates) {
       if (chosen.length >= limit) break
-      if (taken.has(cand.template.codigo)) continue
-      taken.add(cand.template.codigo)
-      chosen.push(cand)
+      if (has(c.id)) continue
+      chosen.push(c)
     }
   }
 
-  return chosen.map((c, idx) => ({
-    id: -(idx + 1),
-    codigo: c.template.codigo,
-    nome: c.template.nome,
-    problema: c.template.problema,
-    beneficio: c.template.beneficio,
-    urgencia: c.template.urgencia,
-    dimensao: c.template.dimensao,
-    proximo_passo: c.template.proximo_passo,
-    kpi: c.template.kpi,
-    motivo: c.motivo,
-    origem: 'metodo' as const,
-  }))
+  const sorted = chosen.sort(
+    (a, b) => PESO_P[a.prioridade] - PESO_P[b.prioridade] || b.score - a.score || a.id.localeCompare(b.id)
+  )
+
+  // A P0 blocking note: the enabling initiative that must precede this one.
+  const firstP0 = sorted.find((c) => c.prioridade === 'P0' && c.categoria === 'enabling')
+  for (const c of sorted) {
+    if (
+      firstP0 &&
+      c.id !== firstP0.id &&
+      c.categoria === 'transformation' &&
+      c.prioridade !== 'P0' &&
+      firstP0.dimensao !== c.dimensao
+    ) {
+      c.bloqueio = `${firstP0.nome} (${firstP0.id})`
+    }
+  }
+
+  return sorted
 }
 
-/** Human-readable note for the report header. */
-export function selectionNote(escala5: number, count: number): string {
-  const band = indexBand(escala5)
+/** Split for the report: business transformation vs AI enabling. */
+export function splitByCategory(items: RecommendedInitiative[]) {
+  return {
+    transformation: items.filter((i) => i.categoria === 'transformation'),
+    enabling: items.filter((i) => i.categoria === 'enabling'),
+  }
+}
+
+export const CATEGORY_META: Record<Category, { label: string; sub: string; tone: string }> = {
+  transformation: {
+    label: 'Business transformation initiatives',
+    sub: 'Deliver business results directly — customer experience, efficiency, decisions.',
+    tone: 'accent',
+  },
+  enabling: {
+    label: 'AI enabling initiatives',
+    sub: 'Establish the conditions those results depend on — governance, data, security, FinOps.',
+    tone: 'lime',
+  },
+}
+
+/** Human-readable header for the report. */
+export function selectionNote(count: number, index: number, target: number): string {
   return (
-    `${count} initiative(s) selected automatically from the Unified Technologies library for an index of ` +
-    `${escala5.toFixed(1)}/5 (${BAND_LABEL[band]}): ${BAND_FOCUS[band]}.`
+    `${count} initiative(s) selected from the Unified Technologies catalogue for a weighted maturity index of ` +
+    `${index.toFixed(2)}/5 against a target of ${target.toFixed(2)}/5. ` +
+    `Each is scored on the seven prioritisation criteria and classified P0–P4.`
   )
 }
-
-export const DIMENSION_ORDER: DimKey[] = DIMENSIONS.map((d) => d.key)

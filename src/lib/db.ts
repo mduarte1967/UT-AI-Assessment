@@ -1,4 +1,4 @@
-import { QUESTIONS, DIMENSIONS } from './questions'
+import { QUESTIONS, DIMENSIONS, QUESTION_BANK_VERSION } from './questions'
 import type { QRow } from './scoring'
 import { hashPassword } from './auth'
 import { nowIso } from './util'
@@ -35,7 +35,7 @@ export type ClientRow = {
 let seedPromise: Promise<void> | null = null
 
 /** Bump when the seeded content changes (e.g. language of the question bank). */
-const SEED_VERSION = '3'
+const SEED_VERSION = '4'
 
 /** Legacy Portuguese option values written by v1 of the app, mapped to the English labels. */
 const LEGACY_VERTICAIS: Record<string, string> = {
@@ -61,7 +61,7 @@ const LEGACY_PORTES: Record<string, string> = {
   'Mais de 5.000 funcionários': 'More than 5,000 employees',
 }
 
-/** Ensures the base schema (production) + v1 questions + initial admin. Idempotent. */
+/** Ensures the base schema (production) + the seeded question bank + initial admin. Idempotent. */
 export async function ensureSeed(env: Env): Promise<void> {
   if (seedPromise) return seedPromise
   seedPromise = (async () => {
@@ -73,23 +73,28 @@ export async function ensureSeed(env: Env): Promise<void> {
 
     if (marker?.value === SEED_VERSION) return
 
-    // Question bank: upsert by slug so existing question ids — and therefore
-    // already collected responses — stay valid when the wording changes.
+    // Question bank v2 — the Outcome-Driven AI Assessment Framework.
+    //
+    // The legacy v1 bank is left untouched: assessments created before the
+    // change keep questionario_versao = 1 and their answers stay readable.
+    // Within v2 the upsert is keyed on (versao, slug) so question ids — and
+    // therefore already collected drafts — stay stable across rewordings.
     const { results: existingRows } = await db
-      .prepare('SELECT id, slug FROM questions WHERE versao = 1')
+      .prepare('SELECT id, slug FROM questions WHERE versao = ?')
+      .bind(QUESTION_BANK_VERSION)
       .all<{ id: number; slug: string }>()
     const existingBySlug = new Map((existingRows || []).map((r) => [r.slug, r.id]))
 
     const insStmt = db.prepare(
       `INSERT OR IGNORE INTO questions
-        (slug, versao, dimensao, ordem, texto, tipo, opcoes, obrigatoria, rubrica, ajuda, ativo)
-       VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
+        (slug, ref, persona, versao, dimensao, ordem, texto, tipo, opcoes, obrigatoria, rubrica, ajuda, ativo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
     )
     const updStmt = db.prepare(
       `UPDATE questions
-          SET dimensao = ?, ordem = ?, texto = ?, tipo = ?, opcoes = ?,
+          SET ref = ?, persona = ?, dimensao = ?, ordem = ?, texto = ?, tipo = ?, opcoes = ?,
               obrigatoria = ?, rubrica = ?, ajuda = ?, ativo = 1
-        WHERE versao = 1 AND slug = ?`
+        WHERE versao = ? AND slug = ?`
     )
 
     const batch = QUESTIONS.map((q) => {
@@ -97,12 +102,44 @@ export async function ensureSeed(env: Env): Promise<void> {
       const rubrica = q.rubrica ? JSON.stringify(q.rubrica) : null
       const obrigatoria = q.obrigatoria ? 1 : 0
       return existingBySlug.has(q.slug)
-        ? updStmt.bind(q.dimensao, q.ordem, q.texto, q.tipo, opcoes, obrigatoria, rubrica, q.ajuda ?? null, q.slug)
-        : insStmt.bind(q.slug, q.dimensao, q.ordem, q.texto, q.tipo, opcoes, obrigatoria, rubrica, q.ajuda ?? null)
+        ? updStmt.bind(
+            q.ref,
+            q.persona,
+            q.dimensao,
+            q.ordem,
+            q.texto,
+            q.tipo,
+            opcoes,
+            obrigatoria,
+            rubrica,
+            q.ajuda ?? null,
+            QUESTION_BANK_VERSION,
+            q.slug
+          )
+        : insStmt.bind(
+            q.slug,
+            q.ref,
+            q.persona,
+            QUESTION_BANK_VERSION,
+            q.dimensao,
+            q.ordem,
+            q.texto,
+            q.tipo,
+            opcoes,
+            obrigatoria,
+            rubrica,
+            q.ajuda ?? null
+          )
     })
     for (let i = 0; i < batch.length; i += 20) {
       await db.batch(batch.slice(i, i + 20))
     }
+
+    // Backfill ref on legacy rows so historical reports keep their traceability.
+    await db
+      .prepare("UPDATE questions SET ref = slug WHERE (ref IS NULL OR ref = '') AND slug IS NOT NULL")
+      .run()
+      .catch(() => undefined)
 
     // Initial administrator
     const admins = await db.prepare('SELECT COUNT(*) AS n FROM admin_users').first<{ n: number }>()
@@ -192,7 +229,7 @@ export async function audit(
 
 export async function questionsFor(env: Env, versao: number): Promise<QRow[]> {
   const { results } = await env.DB.prepare(
-    `SELECT id, slug, versao, dimensao, ordem, texto, tipo, opcoes, obrigatoria, rubrica, ajuda
+    `SELECT id, slug, ref, persona, versao, dimensao, ordem, texto, tipo, opcoes, obrigatoria, rubrica, ajuda
        FROM questions WHERE versao = ? AND ativo = 1 ORDER BY ordem ASC`
   )
     .bind(versao)
@@ -200,6 +237,8 @@ export async function questionsFor(env: Env, versao: number): Promise<QRow[]> {
   return (results || []).map((r) => ({
     id: r.id,
     slug: r.slug,
+    ref: r.ref || r.slug,
+    persona: (r.persona || 'M') as 'O' | 'M' | 'H',
     versao: r.versao,
     dimensao: r.dimensao,
     ordem: r.ordem,
@@ -292,7 +331,7 @@ export async function targetsMap(env: Env, assessmentId: number): Promise<Record
     .all<{ dimensao: string; meta_nivel: number }>()
   const map: Record<string, number> = {}
   for (const r of results || []) map[r.dimensao] = Number(r.meta_nivel)
-  for (const d of DIMENSIONS) if (map[d.key] === undefined) map[d.key] = 2
+  for (const d of DIMENSIONS) if (map[d.key] === undefined) map[d.key] = 3
   return map
 }
 

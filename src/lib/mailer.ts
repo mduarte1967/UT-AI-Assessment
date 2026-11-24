@@ -92,7 +92,7 @@ export function inviteEmail(opts: {
           <p style="font-size:14px;line-height:1.6;color:#33415c">${intro}</p>
           <p style="font-size:14px;line-height:1.6;color:#33415c">
             Your answers are saved automatically: you can close this page and resume through the same link until you submit.
-            As soon as you submit, the report with the maturity index, scorecard, radar and 90-day plan is generated on the spot.
+            As soon as you submit, the report with the business outcome map, the AI Maturity Index, the scorecard, the radar and the prioritised initiative portfolio is generated on the spot.
           </p>
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0">
             <tr><td style="background:#a8d432;border-radius:9px">

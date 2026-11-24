@@ -1,6 +1,7 @@
 import { DIMENSIONS, LEVEL_LABELS } from '../questions'
-import { esc, fmtDate, fmtDateTime, estadoLabel, estadoTone, formatIndex, prioridadePt } from '../util'
-import { adminShell, badge, alertBox, levelChip } from './layout'
+import { esc, fmtDate, fmtDateTime, estadoLabel, estadoTone, formatIndex } from '../util'
+import { adminShell, badge, alertBox } from './layout'
+import { priorityBadge } from '../report'
 import type { QRow, ScoreRow } from '../scoring'
 import { isAnswered, levelOf } from '../scoring'
 import { COUNTRY_NAMES, DEFAULT_COUNTRY, REGION_SUGGESTIONS, CLIENT_VERTICALS, CLIENT_SIZES } from '../geo'
@@ -277,20 +278,18 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
 
   const scorecardCard = d.scorecard
     ? `<section class="card" style="margin-bottom:18px">
-        <div class="card-head"><div><h2>Result by dimension (latest version)</h2><div class="sub">Current level, target, gap and priority per dimension</div></div></div>
+        <div class="card-head"><div><h2>Result by dimension (latest version)</h2><div class="sub">Current maturity, target, gap and priority per dimension — 1 to 5 scale</div></div></div>
         <div class="table-wrap" style="border:0"><table class="scorecard">
           <thead><tr><th>Dimension</th><th class="num">Current</th><th class="num">Target</th><th class="num">Gap</th><th>Priority</th><th>Evidence</th></tr></thead>
           <tbody>${d.scorecard
             .map(
               (r) => `<tr>
-              <td class="dim">${esc(r.nome)}</td>
-              <td class="num">${levelChip(r.atual)}</td>
-              <td class="num">L${r.meta}</td>
-              <td class="num">${r.gap > 0 ? `+${r.gap}` : '0'}</td>
-              <td><span class="badge ${
-                r.prioridade === 'Critical' ? 'critical' : r.prioridade === 'High' ? 'high' : r.prioridade === 'Medium' ? 'medium' : 'low'
-              }">${prioridadePt(r.prioridade)}</span></td>
-              <td class="small muted">${r.respondidas}/${r.total} questions${r.confianca === 'reduzida' ? ' · reduced confidence' : ''}</td>
+              <td class="dim">${esc(r.nome)}<div class="small muted">${Math.round(r.peso * 100)}% weight</div></td>
+              <td class="num"><strong>${r.atual.toFixed(1)}</strong></td>
+              <td class="num">${r.meta.toFixed(1)}</td>
+              <td class="num">${r.gap > 0 ? `+${r.gap.toFixed(1)}` : '0.0'}</td>
+              <td>${priorityBadge(r.prioridade)}</td>
+              <td class="small muted">${r.respondidas}/${r.total} scored${r.confianca === 'reduzida' ? ' · reduced confidence' : ''}</td>
             </tr>`
             )
             .join('')}</tbody></table></div>
@@ -345,9 +344,9 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
   const metasCard = `<section class="card">
     <div class="card-head"><div><h2>Targets declared for 12 months</h2><div class="sub">Basis of the current × target comparison in the radar</div></div></div>
     <div class="targets">${DIMENSIONS.map((dim) => {
-      const m = Number(d.metas[dim.key] ?? 2)
+      const m = Number(d.metas[dim.key] ?? 3)
       return `<div class="target-row"><div><span class="tname">${esc(dim.short)}</span>
-        <span class="tnow">${LEVEL_LABELS[m] || ''}</span></div>${levelChip(m)}</div>`
+        <span class="tnow">${LEVEL_LABELS[m - 1] || ''}</span></div><span class="lvl-chip l${m}">${m}</span></div>`
     }).join('')}</div>
   </section>`
 

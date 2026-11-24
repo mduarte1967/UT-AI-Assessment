@@ -188,7 +188,7 @@ function siteFooter(): string {
         <h4>Deliverables</h4>
         <a href="/#deliverables">Maturity report</a>
         <a href="/#deliverables">Scorecard &amp; radar</a>
-        <a href="/#deliverables">90-day plan</a>
+        <a href="/#deliverables">Transformation roadmap</a>
       </div>
       <div>
         <h4>Contact</h4>

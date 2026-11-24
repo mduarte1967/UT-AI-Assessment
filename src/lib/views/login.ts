@@ -26,7 +26,7 @@ export function loginPage(opts: LoginOpts = {}): string {
       <span class="kicker" style="display:block;margin:34px 0 0">Practice console</span>
       <h1>AI Maturity<br>Assessment</h1>
       <p>A structured diagnosis across the seven dimensions of AI readiness — from client
-      registration to a report with dimension scores, a radar chart and a 90-day plan.</p>
+      registration to a report with the business outcome map, the maturity scorecard, a radar chart and an initiative portfolio classified P0–P4.</p>
       <div class="hero-dims">${dims}</div>
     </div>
     <div class="hero-foot">Unified Technologies · Co-Managed Security Intelligence</div>

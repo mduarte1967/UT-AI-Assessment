@@ -1,5 +1,19 @@
-// Question bank v1 — 7 dimensions, 23 questions, L0–L4 rubrics.
-// Stable per-question key (slug) so the bank can be translated later.
+// ─────────────────────────────────────────────────────────────────────────────
+// UT — Outcome-Driven AI Assessment Framework
+// Question bank v2 · 35 questions · 7 dimensions · maturity scale 1–5
+//
+// Every question carries a persona:
+//   O — Outcome Discovery : identifies objectives, problems, KPIs, opportunities.
+//                           Not scored; feeds the business outcome map and the
+//                           initiative portfolio.
+//   M — Maturity Assessment: evaluates existing capabilities, processes, controls.
+//                           Scored 1–5; feeds the AI Maturity Index.
+//   H — Hybrid             : identifies opportunities AND yields maturity evidence.
+//                           Scored 1–5 and keeps the evidence text.
+//
+// A dimension's level is derived from its M and H questions only, so the index
+// rests on evidence rather than on a single perception score.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export type DimKey =
   | 'strategy'
@@ -10,71 +24,118 @@ export type DimKey =
   | 'people'
   | 'economics'
 
+export type Persona = 'O' | 'M' | 'H'
+
 export type Dimension = {
   key: DimKey
   nome: string
   short: string
   descricao: string
+  /** What the dimension is meant to establish. */
+  objetivo: string
   cor: string
   icone: string
+  /** Share of the weighted AI Maturity Index (0–1, sums to 1). */
+  peso: number
+  expectedOutcomes: string
+  kpis: string
 }
 
 export const DIMENSIONS: Dimension[] = [
   {
     key: 'strategy',
-    nome: 'Strategy and Leadership',
+    nome: 'Strategy',
     short: 'Strategy',
-    descricao: 'Direction, executive sponsorship and governance of the AI agenda.',
-    cor: '#080048',
+    descricao: 'Strategic priorities and how AI contributes to measurable business outcomes.',
+    objetivo:
+      "Understand the organization's strategic priorities and how AI can contribute to measurable business outcomes.",
+    cor: '#0B2545',
     icone: 'fa-compass',
+    peso: 0.15,
+    expectedOutcomes: 'Strategic alignment, business outcome map, executive sponsorship and measurable AI objectives.',
+    kpis: 'Revenue growth, operating margin, service quality, customer satisfaction and strategic goal achievement.',
   },
   {
     key: 'usecases',
-    nome: 'Use Cases and Value',
+    nome: 'Use Cases',
     short: 'Use cases',
-    descricao: 'Prioritised portfolio of use cases with proven value.',
-    cor: '#1f4fa8',
+    descricao: 'Business processes, services and decisions that could benefit from AI-enabled transformation.',
+    objetivo:
+      'Identify business processes, services and decisions that could benefit from AI-enabled transformation.',
+    cor: '#1B3560',
     icone: 'fa-bullseye',
+    peso: 0.2,
+    expectedOutcomes: 'AI opportunity portfolio, process transformation opportunities and prioritized business use cases.',
+    kpis:
+      'Processing time, cost per transaction, hours saved, error rate, customer satisfaction, forecast accuracy and service availability.',
   },
   {
     key: 'data',
-    nome: 'Data and Knowledge',
+    nome: 'Data',
     short: 'Data',
-    descricao: 'Quality, governance and availability of data and knowledge.',
-    cor: '#2f6fb5',
+    descricao: "Whether the organization's data capabilities can support the desired AI outcomes.",
+    objetivo: "Determine whether the organization's data capabilities can support the desired AI outcomes.",
+    cor: '#3E6BA5',
     icone: 'fa-database',
+    peso: 0.15,
+    expectedOutcomes:
+      'Data readiness assessment, data management gaps, governance requirements and data dependencies for AI use cases.',
+    kpis: 'Data quality score, data accessibility, data preparation time, data freshness and governance coverage.',
   },
   {
     key: 'tech',
-    nome: 'Technology and Architecture',
+    nome: 'Technology',
     short: 'Technology',
-    descricao: 'Platform, integration, MLOps and AI observability.',
-    cor: '#3f8ac0',
+    descricao: 'Technological capabilities required to implement, integrate, operate and scale AI solutions.',
+    objetivo:
+      'Assess the technological capabilities required to implement, integrate, operate and scale AI solutions.',
+    cor: '#315a8e',
     icone: 'fa-sitemap',
+    peso: 0.15,
+    expectedOutcomes: 'Technology readiness, architectural gaps, integration requirements and AI platform recommendations.',
+    kpis: 'Deployment time, availability, response latency, integration coverage, scalability and infrastructure utilization.',
   },
   {
     key: 'security',
-    nome: 'Security, Risk and Governance',
+    nome: 'Security',
     short: 'Security',
-    descricao: 'Responsible use, privacy, risk and compliance.',
+    descricao: 'Cybersecurity, privacy, regulatory, operational and responsible AI risks.',
+    objetivo:
+      'Enable AI adoption while managing cybersecurity, privacy, regulatory, operational and responsible AI risks.',
     cor: '#0f7f8f',
     icone: 'fa-shield-halved',
+    peso: 0.15,
+    expectedOutcomes:
+      'AI security posture, Shadow AI exposure, governance gaps, risk register and security control requirements.',
+    kpis: 'Unauthorized AI usage, policy violations, security incidents, AI governance coverage and risk assessment coverage.',
   },
   {
     key: 'people',
-    nome: 'People and Operations',
+    nome: 'People',
     short: 'People',
-    descricao: 'Capability building, organisation and adoption culture.',
-    cor: '#4878b0',
-    icone: 'fa-users',
+    descricao: 'Ability to adopt AI, transform ways of working and realize workforce productivity benefits.',
+    objetivo:
+      "Assess the organization's ability to adopt AI, transform ways of working and realize workforce productivity benefits.",
+    cor: '#8FAE00',
+    icone: 'fa-users-gear',
+    peso: 0.1,
+    expectedOutcomes:
+      'Workforce readiness, AI literacy gaps, adoption strategy, training requirements and change management roadmap.',
+    kpis: 'Active AI users, adoption rate, employee satisfaction, hours released and productivity improvement.',
   },
   {
     key: 'economics',
-    nome: 'Economics and AI FinOps',
-    short: 'FinOps',
-    descricao: 'Cost, budget and return on AI investments.',
-    cor: '#6a8fb8',
+    nome: 'Economics',
+    short: 'Economics',
+    descricao: 'Ability to justify, fund, manage and realize the economic value of AI investments.',
+    objetivo:
+      "Assess the organization's ability to justify, fund, manage and realize the economic value of AI investments.",
+    cor: '#5B6B80',
     icone: 'fa-chart-pie',
+    peso: 0.1,
+    expectedOutcomes:
+      'Business value hypotheses, investment criteria, ROI framework, AI FinOps readiness and benefits realization capabilities.',
+    kpis: 'ROI, TCO, payback period, cost per AI transaction, cost avoidance and realized business value.',
   },
 ]
 
@@ -82,437 +143,708 @@ export const DIM_MAP: Record<string, Dimension> = Object.fromEntries(
   DIMENSIONS.map((d) => [d.key, d])
 ) as Record<string, Dimension>
 
-export const LEVEL_LABELS = [
-  'L0 · Non-existent',
-  'L1 · Initial / ad hoc',
-  'L2 · Defined (draft)',
-  'L3 · Managed (published)',
-  'L4 · Optimised (measured)',
+/** Dimension weights of the weighted AI Maturity Index (sums to 1). */
+export const DIM_WEIGHTS: Record<DimKey, number> = Object.fromEntries(
+  DIMENSIONS.map((d) => [d.key, d.peso])
+) as Record<DimKey, number>
+
+// ── Maturity scale 1–5 ──────────────────────────────────────────────────────
+
+export const MATURITY_LABELS = [
+  '1 · Initial',
+  '2 · Emerging',
+  '3 · Defined',
+  '4 · Managed',
+  '5 · Optimized',
 ]
 
-export const LEVEL_DESC = [
-  'No practice, policy or structured discussion exists.',
-  'Isolated individual actions, with no standard or sponsorship.',
-  'Practice designed and documented, but only partially adopted.',
-  'Practice published, with an owner, process and real adoption.',
-  'Practice measured, periodically reviewed and optimised.',
+export const MATURITY_DESC = [
+  'No structured capability; ad hoc or absent.',
+  'Isolated initiatives, partial visibility, no standard.',
+  'Formal, documented practice with owners and criteria.',
+  'Governed, measured and operating at scale.',
+  'Continuously optimized and outcome-driven.',
 ]
+
+/** Kept for compatibility with older view code: same content, 1–5 scale. */
+export const LEVEL_LABELS = MATURITY_LABELS
+export const LEVEL_DESC = MATURITY_DESC
+
+/** 1-based label lookup: levelLabel(1) → '1 · Initial'. Safe for any input. */
+export function levelLabel(level: number | null | undefined): string {
+  const n = Math.round(Number(level))
+  if (!Number.isFinite(n) || n < 1 || n > 5) return '—'
+  return MATURITY_LABELS[n - 1]
+}
+
+/** Short name of the level: levelName(3) → 'Defined'. */
+export function levelName(level: number | null | undefined): string {
+  const l = levelLabel(level)
+  return l === '—' ? '—' : l.split(' · ')[1]
+}
+
+/**
+ * AI Maturity Assessment Matrix — the five criteria per dimension, from
+ * "1 — Initial" to "5 — Optimized". Used as the rubric anchors of every
+ * maturity question and as the anchor column of the report scorecard.
+ */
+export const MATURITY_MATRIX: Record<DimKey, string[]> = {
+  strategy: [
+    'No formal AI strategy',
+    'Isolated AI objectives',
+    'AI strategy aligned with business priorities',
+    'Governed strategy with measurable KPIs',
+    'Continuous outcome-driven strategic optimization',
+  ],
+  usecases: [
+    'No structured discovery',
+    'Isolated ideas and pilots',
+    'Prioritized use cases with owners and expected benefits',
+    'Production use cases with measured outcomes',
+    'Continuous enterprise-wide AI transformation',
+  ],
+  data: [
+    'Fragmented and unmanaged data',
+    'Partial accessibility and quality controls',
+    'Defined ownership, quality and governance standards',
+    'Integrated, trusted and monitored data',
+    'Continuously optimized AI-ready data ecosystem',
+  ],
+  tech: [
+    'No established AI capabilities',
+    'Isolated tools and environments',
+    'Defined architecture and integration capabilities',
+    'Governed, scalable production AI platforms',
+    'Optimized hybrid and enterprise-wide AI architecture',
+  ],
+  security: [
+    'No AI-specific controls',
+    'Basic policies and partial visibility',
+    'Formal AI security and governance controls',
+    'Continuous monitoring and policy enforcement',
+    'Adaptive security and automated governance',
+  ],
+  people: [
+    'Limited AI awareness',
+    'Individual experimentation',
+    'Structured training and adoption programs',
+    'Measured adoption and workforce transformation',
+    'Continuous AI-enabled organizational improvement',
+  ],
+  economics: [
+    'No structured AI business cases',
+    'Ad hoc investment decisions',
+    'Defined ROI, TCO and funding criteria',
+    'AI FinOps and measured benefits realization',
+    'Continuous value and unit economics optimization',
+  ],
+}
+
+/**
+ * Maturity-to-initiative recommendation matrix: the anchor recommendation for a
+ * dimension at a given need level. A catalogue of possibilities, not a
+ * prescription — the report explains the dependency on use cases and risk.
+ */
+export const MATURITY_TO_INITIATIVE: Record<DimKey, string[]> = {
+  strategy: [
+    'AI Strategy Definition',
+    'AI Transformation Roadmap',
+    'AI Portfolio Governance',
+    'Enterprise AI Transformation',
+    'Continuous Strategic Value Optimization',
+  ],
+  usecases: [
+    'AI Opportunity Discovery',
+    'AI Proof of Value',
+    'AI Assistants & Process Automation',
+    'Agentic AI & Workflow Orchestration',
+    'Enterprise AI Innovation',
+  ],
+  data: [
+    'Data Management Assessment',
+    'Data Quality & Governance',
+    'AI-ready Data Platform',
+    'Enterprise Data Products',
+    'Intelligent Data Management',
+  ],
+  tech: [
+    'AI Architecture Assessment',
+    'AI Platform & Integration Foundation',
+    'Hybrid AI & Private AI',
+    'Scalable AI Inference & Orchestration',
+    'Continuous AI Platform Optimization',
+  ],
+  security: [
+    'Shadow AI Discovery',
+    'AI Policies & Governance',
+    'AI Gateway & AI Security Controls',
+    'Continuous AI Security & Agent Governance',
+    'Automated AI Risk & Governance',
+  ],
+  people: [
+    'AI Literacy Assessment',
+    'AI Awareness & Training',
+    'Governed AI Workspace & Adoption',
+    'Workforce Transformation',
+    'Continuous AI Workforce Optimization',
+  ],
+  economics: [
+    'AI Business Value Assessment',
+    'AI Business Case Framework',
+    'AI FinOps & Cost Management',
+    'AI Unit Economics & Benefits Tracking',
+    'Continuous AI Value Optimization',
+  ],
+}
+
+// ── Question bank ───────────────────────────────────────────────────────────
 
 export type Option = { label: string; level: number }
 
 export type QuestionSeed = {
+  /** Stable identifier and human reference — e.g. 'STR01'. */
   slug: string
+  ref: string
   dimensao: DimKey
+  persona: Persona
   ordem: number
   texto: string
-  tipo: 'escala' | 'escolha' | 'multipla' | 'texto'
+  /**
+   * v2 uses only `texto` (outcome discovery), `escala` (maturity) and `hibrido`
+   * (maturity + evidence). `escolha` / `multipla` remain in the union so older
+   * banks and stored answers stay renderable.
+   */
+  tipo: 'texto' | 'escala' | 'escolha' | 'multipla' | 'hibrido'
   opcoes: Option[] | null
   obrigatoria: boolean
   rubrica: { labels: string[] } | null
   ajuda: string | null
 }
 
-const esc = (l: string[]) => ({ labels: l })
+const anchors = (dim: DimKey) => ({ labels: MATURITY_MATRIX[dim] })
 
 export const QUESTIONS: QuestionSeed[] = [
-  // ── Strategy & Leadership ────────────────────────────────────────────────
+  // ── Dimension 1 — Strategy ───────────────────────────────────────────────
   {
-    slug: 'strategy-politica',
+    slug: 'STR01',
+    ref: 'STR01',
     dimensao: 'strategy',
+    persona: 'O',
     ordem: 10,
-    texto: 'Is there a formalised AI strategy sponsored by leadership?',
-    tipo: 'escala',
-    opcoes: null,
-    obrigatoria: true,
-    ajuda: 'Consider an approved document, a named owner and a roadmap with deadlines.',
-    rubrica: esc([
-      'AI is not discussed on the leadership agenda at all.',
-      'Isolated discussions inside technical teams, with no executive sponsorship.',
-      'Strategy still in draft, with informal sponsorship from one director.',
-      'Strategy published, with an owner, roadmap and approved budget.',
-      'Strategy actively operated with targets, quarterly review and course correction.',
-    ]),
-  },
-  {
-    slug: 'strategy-patrocinio',
-    dimensao: 'strategy',
-    ordem: 11,
-    texto: 'Who sponsors the AI agenda in the organisation today?',
-    tipo: 'escolha',
-    opcoes: [
-      { label: 'Nobody — there is no formal sponsorship', level: 0 },
-      { label: 'An isolated technical leader (IT / data)', level: 1 },
-      { label: 'An informal director, with no dedicated budget', level: 2 },
-      { label: 'A named C-level executive, with budget and targets', level: 3 },
-      { label: 'An executive committee with targets and accountability', level: 4 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: null,
-  },
-  {
-    slug: 'strategy-governanca',
-    dimensao: 'strategy',
-    ordem: 12,
-    texto: 'Which AI governance mechanisms exist today?',
-    tipo: 'multipla',
-    opcoes: [
-      { label: 'Approved AI usage policy', level: 1 },
-      { label: 'Recurring AI committee or forum', level: 1 },
-      { label: 'Use case catalogue with named owners', level: 1 },
-      { label: 'Dedicated and approved budget', level: 1 },
-      { label: 'None of these mechanisms', level: 0 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: 'Each active mechanism raises one level (maximum L4).',
-  },
-
-  // ── Use Cases & Value ───────────────────────────────────────────────────
-  {
-    slug: 'usecases-portfolio',
-    dimensao: 'usecases',
-    ordem: 20,
-    texto: 'Is there a prioritised portfolio of AI use cases?',
-    tipo: 'escala',
-    opcoes: null,
-    obrigatoria: true,
-    ajuda: null,
-    rubrica: esc([
-      'No use case identified or catalogued.',
-      'Scattered ideas, with no prioritisation criteria.',
-      'Backlog prioritised by value × feasibility, without formal approval.',
-      'Approved portfolio with owners, waves and budget.',
-      'Portfolio managed with value metrics and periodic re-assessment.',
-    ]),
-  },
-  {
-    slug: 'usecases-producao',
-    dimensao: 'usecases',
-    ordem: 21,
-    texto: 'How many AI use cases are effectively in production?',
-    tipo: 'escolha',
-    opcoes: [
-      { label: 'None', level: 0 },
-      { label: 'Proofs of concept only, none in production', level: 1 },
-      { label: '1 to 2 cases in production', level: 2 },
-      { label: '3 to 5 cases in production', level: 3 },
-      { label: 'More than 5 cases, scaled across areas', level: 4 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: null,
-  },
-  {
-    slug: 'usecases-valor',
-    dimensao: 'usecases',
-    ordem: 22,
-    texto: 'Do use cases have measured benefit with baseline and KPI?',
-    tipo: 'escala',
-    opcoes: null,
-    obrigatoria: true,
-    ajuda: null,
-    rubrica: esc([
-      'No benefit measurement at all.',
-      'Benefit reported qualitatively, case by case.',
-      'KPIs defined, but without a reliable baseline.',
-      'Baseline and KPI tracked on a dashboard for the main cases.',
-      'Value captured and audited by FinOps/Controlling, with periodic review.',
-    ]),
-  },
-
-  // ── Data & Knowledge ────────────────────────────────────────────────────
-  {
-    slug: 'data-governanca',
-    dimensao: 'data',
-    ordem: 30,
-    texto: 'Does the organisation have data governance (catalogue, ownership, quality)?',
-    tipo: 'escala',
-    opcoes: null,
-    obrigatoria: true,
-    ajuda: null,
-    rubrica: esc([
-      'There is no catalogue, ownership or quality criteria.',
-      'Manual, one-off controls that depend on key people.',
-      'Catalogue and owners defined for a subset of domains.',
-      'Governance with roles, catalogue and quality metrics in use.',
-      'Quality monitored by SLA, with data contracts and automated remediation.',
-    ]),
-  },
-  {
-    slug: 'data-acesso',
-    dimensao: 'data',
-    ordem: 31,
-    texto: 'How mature is data access for AI initiatives?',
-    tipo: 'escolha',
-    opcoes: [
-      { label: 'Scattered spreadsheets, no integration', level: 0 },
-      { label: 'Manual extraction on demand', level: 1 },
-      { label: 'Data warehouse queried through IT requests', level: 2 },
-      { label: 'Platform with self-service for analysts', level: 3 },
-      { label: 'Self-service platform with catalogue, lineage and SLA', level: 4 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: null,
-  },
-  {
-    slug: 'data-conhecimento',
-    dimensao: 'data',
-    ordem: 32,
-    texto: 'Is there a structured, authorised knowledge base for generative AI (RAG)?',
-    tipo: 'escolha',
-    opcoes: [
-      { label: 'None — content lives only in scattered documents', level: 0 },
-      { label: 'Ad hoc repositories, without curation', level: 1 },
-      { label: 'Partial repository, curated manually', level: 2 },
-      { label: 'Curated, versioned base with access control', level: 3 },
-      { label: 'Curated base, measured by usage and continuously updated', level: 4 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: null,
-  },
-
-  // ── Technology & Architecture ───────────────────────────────────────────
-  {
-    slug: 'tech-plataforma',
-    dimensao: 'tech',
-    ordem: 40,
-    texto: 'Is the AI platform defined (models, gateway, MLOps/LLMOps)?',
-    tipo: 'escala',
-    opcoes: null,
-    obrigatoria: true,
-    ajuda: null,
-    rubrica: esc([
-      'Ad hoc use of public tools, with no standard.',
-      'Tools chosen by each team, without integration.',
-      'Reference architecture designed, with partial adoption.',
-      'Standardised platform with gateway, versioning and CI/CD.',
-      'Platform with model observability, continuous evaluation and integrated FinOps.',
-    ]),
-  },
-  {
-    slug: 'tech-componentes',
-    dimensao: 'tech',
-    ordem: 41,
-    texto: 'Which AI platform components exist today?',
-    tipo: 'multipla',
-    opcoes: [
-      { label: 'Model gateway/proxy with centralised credentials', level: 1 },
-      { label: 'Call observability (logs, traces, costs)', level: 1 },
-      { label: 'CI/CD and prompt/model versioning', level: 1 },
-      { label: 'Vector database / retrieval layer (RAG)', level: 1 },
-      { label: 'None of these components', level: 0 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: 'Each active component raises one level (maximum L4).',
-  },
-  {
-    slug: 'tech-integracao',
-    dimensao: 'tech',
-    ordem: 42,
-    texto: 'How do AI models integrate with core systems (ERP, CRM, core platform)?',
-    tipo: 'escolha',
-    opcoes: [
-      { label: 'No integration — used in isolated tools', level: 0 },
-      { label: 'One-off, manual integrations', level: 1 },
-      { label: 'API integrations for some flows', level: 2 },
-      { label: 'Standardised integrations with security and monitoring', level: 3 },
-      { label: 'Orchestration layer with a service catalogue and SLA', level: 4 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: null,
-  },
-
-  // ── Security, Risk & Governance ─────────────────────────────────────────
-  {
-    slug: 'security-politica',
-    dimensao: 'security',
-    ordem: 50,
-    texto: 'Is there a published and enforced responsible AI usage policy?',
-    tipo: 'escala',
-    opcoes: null,
-    obrigatoria: true,
-    ajuda: null,
-    rubrica: esc([
-      'There is no policy or guidance on AI usage.',
-      'Informal guidance, with no approved document.',
-      'Policy in draft, with no exception process.',
-      'Policy published, with use classification and an exception channel.',
-      'Policy enforced with auditing, training and periodic review.',
-    ]),
-  },
-  {
-    slug: 'security-risco',
-    dimensao: 'security',
-    ordem: 51,
-    texto: 'How are AI risks assessed before going to production?',
-    tipo: 'escolha',
-    opcoes: [
-      { label: 'There is no risk assessment', level: 0 },
-      { label: 'Informal assessment, case by case', level: 1 },
-      { label: 'Risk checklist applied to relevant projects', level: 2 },
-      { label: 'Formal assessment with security/compliance sign-off', level: 3 },
-      { label: 'Continuous assessment, with risk register and monitoring', level: 4 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: null,
-  },
-  {
-    slug: 'security-privacidade',
-    dimensao: 'security',
-    ordem: 52,
-    texto: 'Which privacy and security controls are applied to generative AI?',
-    tipo: 'multipla',
-    opcoes: [
-      { label: 'Personal data masking (PII)', level: 1 },
-      { label: 'Sensitive data blocking / DLP on prompts', level: 1 },
-      { label: 'Human review for sensitive decisions', level: 1 },
-      { label: 'Prompt and response logging and auditing', level: 1 },
-      { label: 'No control applied', level: 0 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: null,
-  },
-  {
-    slug: 'security-conformidade',
-    dimensao: 'security',
-    ordem: 53,
-    texto: 'Is applicable AI regulation mapped (GDPR/LGPD, AI Act, sector rules)?',
-    tipo: 'escala',
-    opcoes: null,
-    obrigatoria: true,
-    ajuda: null,
-    rubrica: esc([
-      'No regulatory mapping has been carried out.',
-      'Requirements known informally, with no plan.',
-      'Partial mapping, with gaps identified.',
-      'Requirements mapped with controls and owners defined.',
-      'Compliance monitored with evidence and periodic review.',
-    ]),
-  },
-
-  // ── People & Operations ─────────────────────────────────────────────────
-  {
-    slug: 'people-capacitacao',
-    dimensao: 'people',
-    ordem: 60,
-    texto: 'Is there an AI capability programme by role (business, technical, leadership)?',
-    tipo: 'escala',
-    opcoes: null,
-    obrigatoria: true,
-    ajuda: null,
-    rubrica: esc([
-      'No structured capability building.',
-      'One-off training, driven by individual initiative.',
-      'Learning paths defined for some roles, with limited adoption.',
-      'Programme by role with coverage targets and up-to-date material.',
-      'Programme measured by practical application, with certification and an active community.',
-    ]),
-  },
-  {
-    slug: 'people-time',
-    dimensao: 'people',
-    ordem: 61,
-    texto: 'How is the AI team structured today?',
-    tipo: 'escolha',
-    opcoes: [
-      { label: 'No dedicated team', level: 0 },
-      { label: 'Part-time effort from one or two people', level: 1 },
-      { label: 'Small, multidisciplinary and informal team', level: 2 },
-      { label: 'Formal team with defined roles (product, data, engineering)', level: 3 },
-      { label: 'Teams federated by domain, with a CoE and AI career path', level: 4 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: null,
-  },
-  {
-    slug: 'people-cultura',
-    dimensao: 'people',
-    ordem: 62,
-    texto: 'Is there a community of practice and incentives for AI adoption?',
-    tipo: 'escala',
-    opcoes: null,
-    obrigatoria: true,
-    ajuda: null,
-    rubrica: esc([
-      'No community and no incentives.',
-      'Spontaneous initiatives, with no formal support.',
-      'Active community, not linked to targets or recognition.',
-      'Community with regular meetups and leadership sponsorship.',
-      'Adoption incentivised in area targets and formally recognised.',
-    ]),
-  },
-
-  // ── Economics & AI FinOps ───────────────────────────────────────────────
-  {
-    slug: 'economics-visibilidade',
-    dimensao: 'economics',
-    ordem: 70,
-    texto: 'Is AI cost visible per use case and per area?',
-    tipo: 'escala',
-    opcoes: null,
-    obrigatoria: true,
-    ajuda: null,
-    rubrica: esc([
-      'AI costs are neither known nor tracked.',
-      'Costs appear aggregated under IT, with no detail.',
-      'Manual estimates per area, with no allocation.',
-      'Consumption and cost monitored per use case.',
-      'Cost per transaction/outcome with alerts and continuous optimisation.',
-    ]),
-  },
-  {
-    slug: 'economics-orcamento',
-    dimensao: 'economics',
-    ordem: 71,
-    texto: 'How is the AI budget managed today?',
-    tipo: 'escolha',
-    opcoes: [
-      { label: 'There is no specific budget', level: 0 },
-      { label: 'One-off funding, case by case', level: 1 },
-      { label: 'A single annual budget, without formal prioritisation', level: 2 },
-      { label: 'Budget per initiative, with approval and tracking', level: 3 },
-      { label: 'Budget by expected value, with quarterly review and chargeback', level: 4 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: null,
-  },
-  {
-    slug: 'economics-finops',
-    dimensao: 'economics',
-    ordem: 72,
-    texto: 'Which AI FinOps practices are in use?',
-    tipo: 'multipla',
-    opcoes: [
-      { label: 'AI cost allocation/chargeback per area', level: 1 },
-      { label: 'Budget and alerts per use case', level: 1 },
-      { label: 'Token/model optimisation and caching', level: 1 },
-      { label: 'Business case with cost × benefit per initiative', level: 1 },
-      { label: 'None of these practices', level: 0 },
-    ],
-    obrigatoria: true,
-    rubrica: null,
-    ajuda: null,
-  },
-
-  // ── Open context (not scored) ───────────────────────────────────────────
-  {
-    slug: 'contexto-objetivo',
-    dimensao: 'strategy',
-    ordem: 80,
-    texto: 'In one sentence, what is the company’s main AI objective for the next 12 months?',
+    texto:
+      'What are the most important business outcomes your organization aims to achieve over the next 12–24 months?',
     tipo: 'texto',
     opcoes: null,
-    obrigatoria: false,
+    obrigatoria: true,
     rubrica: null,
-    ajuda: 'Optional. This text appears in the executive summary of the report.',
+    ajuda: 'List two to four outcomes. They become the business outcome map of the report.',
+  },
+  {
+    slug: 'STR02',
+    ref: 'STR02',
+    dimensao: 'strategy',
+    persona: 'O',
+    ordem: 11,
+    texto:
+      'Which strategic KPIs are currently below expectations, and what improvement targets have been established?',
+    tipo: 'texto',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: null,
+    ajuda: 'Name the KPI, the current value and the target you have committed to.',
+  },
+  {
+    slug: 'STR03',
+    ref: 'STR03',
+    dimensao: 'strategy',
+    persona: 'O',
+    ordem: 12,
+    texto:
+      'What business challenges or organizational constraints are preventing you from achieving these outcomes?',
+    tipo: 'texto',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: null,
+    ajuda: 'Constraints can be operational, financial, regulatory, technological or people-related.',
+  },
+  {
+    slug: 'STR04',
+    ref: 'STR04',
+    dimensao: 'strategy',
+    persona: 'M',
+    ordem: 13,
+    texto:
+      'To what extent is AI incorporated into your business strategy, transformation programs and investment priorities?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('strategy'),
+    ajuda: null,
+  },
+  {
+    slug: 'STR05',
+    ref: 'STR05',
+    dimensao: 'strategy',
+    persona: 'M',
+    ordem: 14,
+    texto:
+      'How are AI objectives, executive sponsorship, business ownership and success criteria defined and communicated across the organization?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('strategy'),
+    ajuda: null,
+  },
+
+  // ── Dimension 2 — Use Cases ──────────────────────────────────────────────
+  {
+    slug: 'USC01',
+    ref: 'USC01',
+    dimensao: 'usecases',
+    persona: 'O',
+    ordem: 20,
+    texto:
+      'Which business processes involve significant manual effort, repetitive activities, operational delays, errors or unnecessary costs, and how are these impacts measured?',
+    tipo: 'texto',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: null,
+    ajuda: 'Name the process, the volume and the cost or delay it causes today.',
+  },
+  {
+    slug: 'USC02',
+    ref: 'USC02',
+    dimensao: 'usecases',
+    persona: 'O',
+    ordem: 21,
+    texto:
+      'Where could AI improve customer experience, service delivery, revenue generation or enable new products and services?',
+    tipo: 'texto',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: null,
+    ajuda: 'Think about the customer journey: contact, decision, fulfilment, support.',
+  },
+  {
+    slug: 'USC03',
+    ref: 'USC03',
+    dimensao: 'usecases',
+    persona: 'O',
+    ordem: 22,
+    texto:
+      'Which business decisions or employee activities could benefit from faster access to information, knowledge, analytics or predictive insights?',
+    tipo: 'texto',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: null,
+    ajuda: 'Decisions that are slow, inconsistent or dependent on scarce specialists are the best candidates.',
+  },
+  {
+    slug: 'USC04',
+    ref: 'USC04',
+    dimensao: 'usecases',
+    persona: 'O',
+    ordem: 23,
+    texto:
+      'Which workflows could benefit from intelligent automation, AI assistants or AI agents, and what measurable improvements would be expected?',
+    tipo: 'texto',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: null,
+    ajuda: 'Include the expected gain: hours, cycle time, error rate or cost.',
+  },
+  {
+    slug: 'USC05',
+    ref: 'USC05',
+    dimensao: 'usecases',
+    persona: 'M',
+    ordem: 24,
+    texto:
+      'How does your organization currently identify, evaluate, prioritize, validate and scale AI use cases based on business value, feasibility and risk?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('usecases'),
+    ajuda: null,
+  },
+
+  // ── Dimension 3 — Data ───────────────────────────────────────────────────
+  {
+    slug: 'DAT01',
+    ref: 'DAT01',
+    dimensao: 'data',
+    persona: 'O',
+    ordem: 30,
+    texto:
+      'What structured and unstructured data is available to support your priority business processes, decisions and potential AI use cases?',
+    tipo: 'texto',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: null,
+    ajuda: 'List the main systems and document repositories that hold this information.',
+  },
+  {
+    slug: 'DAT02',
+    ref: 'DAT02',
+    dimensao: 'data',
+    persona: 'M',
+    ordem: 31,
+    texto:
+      'How does your organization measure and manage data quality, completeness, accuracy, consistency and timeliness?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('data'),
+    ajuda: null,
+  },
+  {
+    slug: 'DAT03',
+    ref: 'DAT03',
+    dimensao: 'data',
+    persona: 'M',
+    ordem: 32,
+    texto:
+      'To what extent is business-critical information accessible, discoverable and integrated across enterprise systems and repositories?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('data'),
+    ajuda: null,
+  },
+  {
+    slug: 'DAT04',
+    ref: 'DAT04',
+    dimensao: 'data',
+    persona: 'M',
+    ordem: 33,
+    texto:
+      'How are data ownership, classification, lineage, access permissions and governance responsibilities established and enforced?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('data'),
+    ajuda: null,
+  },
+  {
+    slug: 'DAT05',
+    ref: 'DAT05',
+    dimensao: 'data',
+    persona: 'M',
+    ordem: 34,
+    texto:
+      'How effectively can your organization prepare, integrate, maintain and provide trusted data for AI applications, analytics and performance evaluation?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('data'),
+    ajuda: null,
+  },
+
+  // ── Dimension 4 — Technology ─────────────────────────────────────────────
+  {
+    slug: 'TEC01',
+    ref: 'TEC01',
+    dimensao: 'tech',
+    persona: 'H',
+    ordem: 40,
+    texto:
+      'What existing business applications, cloud services, infrastructure and AI capabilities could support your identified business outcomes?',
+    tipo: 'hibrido',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('tech'),
+    ajuda: 'Rate the readiness of what exists today and list the platforms behind your answer.',
+  },
+  {
+    slug: 'TEC02',
+    ref: 'TEC02',
+    dimensao: 'tech',
+    persona: 'M',
+    ordem: 41,
+    texto:
+      'How effectively can enterprise systems exchange information and execute workflows through APIs, integration platforms or automation services?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('tech'),
+    ajuda: null,
+  },
+  {
+    slug: 'TEC03',
+    ref: 'TEC03',
+    dimensao: 'tech',
+    persona: 'M',
+    ordem: 42,
+    texto:
+      'What capabilities exist to develop, deploy, evaluate, monitor and maintain AI applications, models and agents?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('tech'),
+    ajuda: null,
+  },
+  {
+    slug: 'TEC04',
+    ref: 'TEC04',
+    dimensao: 'tech',
+    persona: 'H',
+    ordem: 43,
+    texto:
+      'What technical limitations related to performance, availability, scalability, legacy systems or data residency could constrain AI adoption?',
+    tipo: 'hibrido',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('tech'),
+    ajuda: 'Rate how constraining these limitations are today and name the main one.',
+  },
+  {
+    slug: 'TEC05',
+    ref: 'TEC05',
+    dimensao: 'tech',
+    persona: 'M',
+    ordem: 44,
+    texto:
+      'How effectively can your current technology architecture support secure, reliable and scalable AI solutions across cloud, on-premises and edge environments?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('tech'),
+    ajuda: null,
+  },
+
+  // ── Dimension 5 — Security ───────────────────────────────────────────────
+  {
+    slug: 'SEC01',
+    ref: 'SEC01',
+    dimensao: 'security',
+    persona: 'M',
+    ordem: 50,
+    texto:
+      'How effectively does your organization identify and monitor AI applications currently being used by employees, including unauthorized or unmanaged AI services?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('security'),
+    ajuda: null,
+  },
+  {
+    slug: 'SEC02',
+    ref: 'SEC02',
+    dimensao: 'security',
+    persona: 'M',
+    ordem: 51,
+    texto:
+      'What policies and controls govern AI usage, sensitive data protection, privacy, regulatory compliance and third-party AI providers?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('security'),
+    ajuda: null,
+  },
+  {
+    slug: 'SEC03',
+    ref: 'SEC03',
+    dimensao: 'security',
+    persona: 'M',
+    ordem: 52,
+    texto:
+      'How does your organization prevent, detect and respond to AI-specific risks, including data leakage, prompt injection, inaccurate outputs and unauthorized agent actions?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('security'),
+    ajuda: null,
+  },
+  {
+    slug: 'SEC04',
+    ref: 'SEC04',
+    dimensao: 'security',
+    persona: 'M',
+    ordem: 53,
+    texto:
+      'How are AI use cases evaluated for risk, human oversight, accountability, auditability and regulatory compliance before production deployment?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('security'),
+    ajuda: null,
+  },
+  {
+    slug: 'SEC05',
+    ref: 'SEC05',
+    dimensao: 'security',
+    persona: 'M',
+    ordem: 54,
+    texto:
+      'How effectively can your organization continuously monitor AI security, enforce governance policies and respond to AI-related incidents at scale?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('security'),
+    ajuda: null,
+  },
+
+  // ── Dimension 6 — People ─────────────────────────────────────────────────
+  {
+    slug: 'PEO01',
+    ref: 'PEO01',
+    dimensao: 'people',
+    persona: 'O',
+    ordem: 60,
+    texto:
+      'Which employee groups, business roles and activities could benefit most from AI-enabled productivity, knowledge access or workforce augmentation?',
+    tipo: 'texto',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: null,
+    ajuda: 'Name the roles and the headcount, and what they would stop doing.',
+  },
+  {
+    slug: 'PEO02',
+    ref: 'PEO02',
+    dimensao: 'people',
+    persona: 'M',
+    ordem: 61,
+    texto:
+      'What is the current level of AI literacy, practical AI experience and technical capability across business and technology teams?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('people'),
+    ajuda: null,
+  },
+  {
+    slug: 'PEO03',
+    ref: 'PEO03',
+    dimensao: 'people',
+    persona: 'M',
+    ordem: 62,
+    texto:
+      'How does your organization provide employees with approved AI tools, training, guidance and role-specific enablement?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('people'),
+    ajuda: null,
+  },
+  {
+    slug: 'PEO04',
+    ref: 'PEO04',
+    dimensao: 'people',
+    persona: 'M',
+    ordem: 63,
+    texto:
+      'How effectively can the organization redesign workflows, responsibilities and operating practices to incorporate AI capabilities?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('people'),
+    ajuda: null,
+  },
+  {
+    slug: 'PEO05',
+    ref: 'PEO05',
+    dimensao: 'people',
+    persona: 'M',
+    ordem: 64,
+    texto:
+      'How are AI adoption, employee productivity, user satisfaction and the realization of workforce-related benefits measured and continuously improved?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('people'),
+    ajuda: null,
+  },
+
+  // ── Dimension 7 — Economics ──────────────────────────────────────────────
+  {
+    slug: 'ECO01',
+    ref: 'ECO01',
+    dimensao: 'economics',
+    persona: 'H',
+    ordem: 70,
+    texto:
+      'How does your organization quantify the financial and non-financial impact of its business challenges and improvement opportunities?',
+    tipo: 'hibrido',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('economics'),
+    ajuda: 'Rate the current practice and give one example of a quantified impact.',
+  },
+  {
+    slug: 'ECO02',
+    ref: 'ECO02',
+    dimensao: 'economics',
+    persona: 'M',
+    ordem: 71,
+    texto:
+      'How are AI investments evaluated against expected business benefits, implementation costs, operating costs, ROI and payback requirements?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('economics'),
+    ajuda: null,
+  },
+  {
+    slug: 'ECO03',
+    ref: 'ECO03',
+    dimensao: 'economics',
+    persona: 'M',
+    ordem: 72,
+    texto:
+      'What funding mechanisms and investment approval criteria exist for AI initiatives, including experimentation, production deployment and scaling?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('economics'),
+    ajuda: null,
+  },
+  {
+    slug: 'ECO04',
+    ref: 'ECO04',
+    dimensao: 'economics',
+    persona: 'M',
+    ordem: 73,
+    texto:
+      'How are AI consumption costs, infrastructure expenses, software licenses and operational costs monitored, allocated and optimized?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('economics'),
+    ajuda: null,
+  },
+  {
+    slug: 'ECO05',
+    ref: 'ECO05',
+    dimensao: 'economics',
+    persona: 'M',
+    ordem: 74,
+    texto:
+      'How does your organization validate actual AI business benefits against initial business cases and use those results to guide future investments?',
+    tipo: 'escala',
+    opcoes: null,
+    obrigatoria: true,
+    rubrica: anchors('economics'),
+    ajuda: null,
   },
 ]
+
+/** Bank version stored on new assessments. v1 remains readable for history. */
+export const QUESTION_BANK_VERSION = 2
+
+export const PERSONA_LABEL: Record<Persona, string> = {
+  O: 'Outcome discovery',
+  M: 'Maturity assessment',
+  H: 'Hybrid',
+}
+
+export const PERSONA_DESC: Record<Persona, string> = {
+  O: 'Identifies objectives, problems, KPIs and business opportunities. Not scored — feeds the outcome map and the initiative portfolio.',
+  M: 'Evaluates existing capabilities, processes and controls. Scored 1–5 — feeds the AI Maturity Index.',
+  H: 'Identifies opportunities and also provides maturity evidence. Scored 1–5, keeping the evidence text.',
+}
+
+/** Questions that actually score a dimension. */
+export function scoredQuestions(qs: QuestionSeed[]): QuestionSeed[] {
+  return qs.filter((q) => q.persona === 'M' || q.persona === 'H')
+}

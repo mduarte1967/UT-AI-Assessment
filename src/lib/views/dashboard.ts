@@ -1,4 +1,4 @@
-import { DIMENSIONS, LEVEL_DESC, LEVEL_LABELS } from '../questions'
+import { DIMENSIONS, LEVEL_LABELS } from '../questions'
 import { esc, formatIndex, fmtDate, estadoLabel, estadoTone, prioridadePt } from '../util'
 import { adminShell, badge } from './layout'
 
@@ -70,7 +70,7 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
     .map(
       (d) => `<div class="dim-row">
       <span class="nm" title="${esc(d.nome)}">${esc(d.short)}</span>
-      <div class="mini-bar" style="height:9px"><i style="width:${((d.media / 4) * 100).toFixed(1)}%;background:${dimColor(
+      <div class="mini-bar" style="height:9px"><i style="width:${((d.media / 5) * 100).toFixed(1)}%;background:${dimColor(
         d.key
       )}"></i></div>
       <span class="vv">${d.n === 0 ? '—' : formatIndex(d.media)}</span>
@@ -81,13 +81,12 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
   const clientesCard = `<section class="card" style="margin-bottom:18px">
     <div class="card-head"><div>
       <h2>Distribution across the 7 dimensions</h2>
-      <div class="sub">Average current level (L0–L4) across the latest reports</div>
+      <div class="sub">Average current level (1–5) across the latest reports</div>
     </div>
     <span class="badge muted">${data.dimensoes.reduce((a, d) => a + d.n, 0)} measurements</span></div>
     <div class="dim-list">${dimBars}</div>
     <div class="divider"></div>
-    <div class="small muted">Scale: ${LEVEL_LABELS.map((l) => esc(l)).join(' · ')}</div>
-  </section>`
+    <div class="small muted">Scale: ${LEVEL_LABELS.map((l) => esc(l)).join(' · ')}</div>  </section>`
 
   const chips = estados
     .map(

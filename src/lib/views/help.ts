@@ -73,7 +73,8 @@ export function helpPage(o: HelpOpts): string {
     5,
     'The report is generated immediately',
     `On submit, the system calculates the index, builds the results table for the 7 dimensions, the current × target radar,
-     the prioritised initiatives and the 90-day plan. The client sees and downloads it as PDF/XLSX;
+     the AI Maturity Index, the scorecard of the seven dimensions, the current × target radar, the initiative portfolio
+     (business transformation + AI enabling) and the AI Transformation Roadmap. The client sees and downloads it as PDF/XLSX;
      you follow everything on the <a href="/admin">Dashboard</a>, with a full base export.
      To correct answers after submission, use <em>Reopen questionnaire</em> on the client record — that generates a new report version and preserves the previous one.`,
     `<a class="btn btn-sm btn-ghost" href="/admin"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Open the dashboard</a>`
@@ -119,9 +120,13 @@ export function helpPage(o: HelpOpts): string {
       </details>
       <details>
         <summary>How is the index calculated?</summary>
-        <p>Each dimension's level is the <strong>floor of the average</strong> of its answers (no rounding up),
-        on the L0–L4 scale. The overall index is the average of the 7 dimensions, shown on a 0–5 scale.
-        The gap is the declared target minus the current level, and priority comes from the gap × urgency matrix.</p>
+        <p>Of the 35 questions, 9 capture business outcomes and are <strong>not scored</strong>; 23 measure maturity and
+        3 are hybrid — scored and keeping the evidence text. Each dimension's level is the <strong>mean</strong> of its
+        scored answers on the 1–5 scale (1 Initial, 2 Emerging, 3 Defined, 4 Managed, 5 Optimized).
+        The AI Maturity Index is the <strong>weighted</strong> mean of the seven dimensions (Use Cases 20%; Strategy,
+        Data, Technology and Security 15% each; People and Economics 10% each). The gap is the declared target minus
+        the current level, and each initiative is scored on seven weighted criteria to a 0–100 mark, classified
+        <strong>P0</strong> (critical foundation) to <strong>P4</strong> (deferred).</p>
       </details>
       <details>
         <summary>How do I export the data?</summary>

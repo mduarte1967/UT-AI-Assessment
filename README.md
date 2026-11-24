@@ -88,7 +88,34 @@ An in-app 5-step guide is available at **`/ajuda`** (menu item "How to use"):
 2. **Register the client** — in *New client*, including the **contact name and e-mail** — or let the prospect self-register at `/start`. The invitation goes to that e-mail address either way.
 3. **Configure e-mail delivery** (once) — in *Settings → E-mail delivery*: a Resend API key (recommended) or SendGrid, a verified sender, subject, opening text and link validity. The *Test* button confirms delivery.
 4. **The client answers through the link** — no password, with autosave; they can close and return until they submit.
-5. **The report is generated immediately** — index, 7-dimension scorecard, current × target radar, prioritised initiatives and a 90-day plan; PDF/XLSX available to both the client and the administrator. **The client fills in no initiatives:** the method selects them from a curated library (see below).
+5. **The report is generated immediately** — business outcome map, weighted AI Maturity Index, the 7-dimension scorecard, the current × target radar, the initiative portfolio (business transformation + AI enabling), the P0–P4 prioritisation and the AI Transformation Roadmap; PDF/XLSX available to both the client and the administrator. **The client fills in no initiatives:** the framework selects them from a catalogue of 28 (see below).
+
+## The method — UT Outcome-Driven AI Assessment Framework
+
+Structure: **Unified Questionnaire (35 questions · 7 dimensions) → Business Outcome Map → AI Maturity Index → Seven Dimensions → AI Initiative Recommendation Engine → AI Initiative Prioritization → AI Transformation Roadmap**.
+
+**Question personas.** Every question is one of:
+
+| Type | Purpose | Count |
+|---|---|---|
+| **O — Outcome Discovery** | Objectives, problems, KPIs, opportunities. Not scored; feeds the outcome map and the portfolio. | 9 |
+| **M — Maturity Assessment** | Existing capabilities, processes and controls. Scored 1–5. | 23 |
+| **H — Hybrid** | Both, keeping the evidence text. Scored 1–5. | 3 (TEC01, TEC04, ECO01) |
+
+Per dimension: Strategy 3O/2M · Use Cases 4O/1M · Data 1O/4M · Technology 3M/2H · Security 5M · People 1O/4M · Economics 4M/1H.
+
+**Maturity scale 1–5** — 1 Initial · 2 Emerging · 3 Defined · 4 Managed · 5 Optimized. Each dimension has its own five anchor phrases (`MATURITY_MATRIX`), shown under every maturity question. *Maturity is determined from the evidence collected, not only from the respondent's perception.*
+
+**Weighted AI Maturity Index** — Strategy 15%, Use Cases 20%, Data 15%, Technology 15%, Security 15%, People 10%, Economics 10%. Reference scorecard: current **1.90**, target **3.35**, weighted gap **1.45** (reproduced exactly by the seeded bank and the scoring engine).
+
+**Initiative catalogue IN01–IN28** with traceability (dimension → related questions → recommended initiative → trigger), split into two families:
+
+- **Business Transformation Initiatives** — deliver business results: AI Concierge, Intelligent Automation, Enterprise Knowledge Assistant, Predictive AI, Agentic workflows.
+- **AI Enabling Initiatives** — establish the conditions: Data Governance, AI Gateway, Private AI, AI Security, AI FinOps, Workforce Enablement.
+
+**Prioritisation** — seven weighted criteria (Business Outcome Impact 25%, Strategic Alignment 15%, Maturity Gap 15%, Economic Value 15%, Feasibility 10%, Time to Value 10%, Risk & Dependency Criticality 10%), each 1–5, scored to 0–100 and classified **P0** (mandatory override / critical foundation) · **P1** 80–100 · **P2** 65–79 · **P3** 50–64 · **P4** 20–49. *A P0 initiative does not need the highest individual ROI.*
+
+**Roadmap** — mandatory foundations (P0) · quick wins (P1) · strategic initiatives (P2) · later (P3–P4).
 
 ## Endpoints
 
@@ -137,8 +164,9 @@ An in-app 5-step guide is available at **`/ajuda`** (menu item "How to use"):
 
 - **Storage**: Cloudflare D1 (SQLite). 13 tables — `clients`, `assessments`, `questions`, `responses`, `dimension_targets`, `initiatives`, `reports`, `admin_users`, `sessions`, `settings`, `audit_log`, `signup_log`, `schema_meta`.
 - **Bootstrap**: idempotent — `SCHEMA_SQL` + `COLUMN_MIGRATIONS` plus `ensureSeed` run once per isolate. The seed is versioned (`settings.seed_version`, currently `3`). Questions are **upserted by slug**, so existing question IDs — and the responses already collected against them — stay valid.
-- **Question bank**: 7 dimensions, 23 questions (`src/lib/questions.ts`). Slugs are language-neutral so future EN/ES variants can share the same IDs.
-- **Scoring**: dimension level = `floor(mean)` of the per-question levels (rubric based, never rounded up); general index = weighted average 0–4 displayed as `x.x / 5.0`; priority derived from gap × impact with floors (L0 → Critical, L1 → at least High).
+- **Question bank**: 7 dimensions, **35 questions** (`src/lib/questions.ts`), bank version **2** (`QUESTION_BANK_VERSION`). References are stable codes `STR01…ECO05`, and `slug === ref`, so reports and the initiative mapping can be traced back to the answer.
+- **Scoring**: all M and H answers are 1–5; a dimension's level is the **mean** of its scored answers (one decimal, O questions excluded); the AI Maturity Index is the **weighted** mean of the seven dimensions; the weighted gap is weighted target − weighted current. Initiatives are scored on the seven prioritisation criteria and classified P0–P4 with a foundation override.
+- **Two families of initiative**: `category: 'transformation' | 'enabling'` in `src/lib/initiatives.ts`; the report always shows both groups, so a technology roadmap is never presented without the business results it serves.
 - **Security**: PBKDF2-SHA256 (150k iterations) via Web Crypto, opaque session tokens in `sessions` (HttpOnly `SameSite=Lax` cookie, 12h TTL), expiring per-assessment link tokens, per-client data isolation through the token, and an append-only `audit_log`.
 
 ## Data migrations
@@ -147,14 +175,15 @@ An in-app 5-step guide is available at **`/ajuda`** (menu item "How to use"):
 
 - **Seed version 2 — localisation.** Translates `clients.vertical` and `clients.tamanho_faixa` values captured while the UI was in Portuguese, replaces the stored Portuguese mail subject/intro defaults, and updates the seeded administrator name.
 - **Seed version 3 — US/Caribbean client model.** Copies historical `cnpj` values into `tax_id` and sets `country = 'Brazil'` on records that predate the country field (that is where they were captured). New records carry `country`, `postal_code` and `website`.
-- **Column upgrades.** `src/lib/schema.ts` exports `COLUMN_MIGRATIONS` (`ALTER TABLE clients ADD COLUMN …`), run on every boot with duplicate-column errors ignored, so an existing database picks up `tax_id`, `country`, `postal_code` and `website` without a manual migration step. `migrations/0004_us_caribbean_model.sql` mirrors the same changes for operators who run migrations explicitly.
+- **Seed version 4 — Outcome-Driven framework.** Seeds the 35-question bank as `questions.versao = 2` with `ref` and `persona`, and backfills `ref = slug` on legacy rows. Assessments created from now on carry `questionario_versao = 2`; older assessments keep version 1 and their answers/reports stay readable. Default 12-month target per dimension is now **3 (Defined)** on the 1–5 scale.
+- **Column upgrades.** `src/lib/schema.ts` exports `COLUMN_MIGRATIONS` (`ALTER TABLE … ADD COLUMN …`), run on every boot with duplicate-column errors ignored, so an existing database picks up new columns without a manual migration step. `migrations/0006_outcome_driven_framework.sql` mirrors the question-bank changes for operators who run migrations explicitly.
 
 ## Deployment
 
 - **Platform**: Cloudflare Pages
 - **Status**: ✅ running in the sandbox preview · production deploy pending the path decision
 - **Tech stack**: Hono + TypeScript + D1, unifiedtech.com design system (navy `#0B2545`, blue `#3E6BA5`, lime `#B0D000`, Roboto)
-- **Last updated**: 2026-11-23
+- **Last updated**: 2026-11-24
 
 ## Notes
 

@@ -49,6 +49,8 @@ CREATE INDEX IF NOT EXISTS idx_assessments_estado ON assessments(estado);
 CREATE TABLE IF NOT EXISTS questions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   slug TEXT NOT NULL,
+  ref TEXT,
+  persona TEXT NOT NULL DEFAULT 'M',
   versao INTEGER NOT NULL DEFAULT 1,
   dimensao TEXT NOT NULL,
   ordem INTEGER NOT NULL,
@@ -160,4 +162,6 @@ ALTER TABLE initiatives ADD COLUMN codigo TEXT;
 ALTER TABLE initiatives ADD COLUMN kpi TEXT;
 ALTER TABLE initiatives ADD COLUMN motivo TEXT;
 ALTER TABLE initiatives ADD COLUMN origem TEXT NOT NULL DEFAULT 'metodo';
+ALTER TABLE questions ADD COLUMN ref TEXT;
+ALTER TABLE questions ADD COLUMN persona TEXT NOT NULL DEFAULT 'M';
 `
