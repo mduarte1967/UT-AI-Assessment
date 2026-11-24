@@ -18,10 +18,10 @@ administrator console** — there is no "admin" button, link or menu item anywhe
 | **Discovery** | Button embedded on unifiedtech.com, or direct link | Typed / bookmarked by the team |
 | **Routes** | `/`, `/start`, `/a/:token`, `/a/:token/report` | `/admin`, `/admin/clients/*`, `/admin/settings`, `/admin/help` |
 
-- **Public site (preview)**: https://3000-i6kkz434e1cmpklz09rwv-b9b802c4.sandbox.novita.ai/
-- **Public registration form**: https://3000-i6kkz434e1cmpklz09rwv-b9b802c4.sandbox.novita.ai/start
-- **Administrator console**: https://3000-i6kkz434e1cmpklz09rwv-b9b802c4.sandbox.novita.ai/admin
-- **Production**: pending a deployment path decision (Genspark hosted or the customer's own Cloudflare account)
+- **Public site (production)**: https://4a95750e-3a0a-4b92-9dc8-305b7e0c9e0f.vip.gensparksite.com/
+- **Public registration form**: https://4a95750e-3a0a-4b92-9dc8-305b7e0c9e0f.vip.gensparksite.com/start
+- **Administrator console**: https://4a95750e-3a0a-4b92-9dc8-305b7e0c9e0f.vip.gensparksite.com/admin
+- **Public site (sandbox preview)**: http://localhost:3000/ (PM2 process `readiness-app-lite`)
 
 ## Visual identity
 
@@ -185,10 +185,19 @@ Per dimension: Strategy 3O/2M · Use Cases 4O/1M · Data 1O/4M · Technology 3M/
 
 ## Deployment
 
-- **Platform**: Cloudflare Pages
-- **Status**: ✅ running in the sandbox preview · production deploy pending the path decision
+- **Platform**: Cloudflare Workers for Platform (Genspark hosted) — Worker `4a95750e-3a0a-4b92-9dc8-305b7e0c9e0f`, managed D1 `…-db`
+- **Status**: ✅ live in production — first boot seeds schema, question bank and the administrator automatically
+- **URL**: https://4a95750e-3a0a-4b92-9dc8-305b7e0c9e0f.vip.gensparksite.com/
 - **Tech stack**: Hono + TypeScript + D1, unifiedtech.com design system (navy `#0B2545`, blue `#3E6BA5`, lime `#B0D000`, Roboto)
 - **Last updated**: 2026-11-24
+
+### Operational notes — runtime limits found in production
+
+- **PBKDF2 is capped at 100,000 iterations by the Workers runtime.** Any higher value throws `NotSupportedError`, while miniflare/Node accepts it — so an over-limit hash passes every local test and then fails in the live Worker. `PBKDF2_MAX_ITERATIONS` in `src/lib/auth.ts` is the single source of truth and sits exactly at the ceiling. `verifyPassword` fails closed (returns `false`) if it ever meets a hash above it, instead of raising a 500.
+- **The seed must never abort halfway.** A thrown statement used to leave the live database with the question bank seeded but no administrator and no `seed_version` marker, so every request retried the seed and returned 500 indefinitely. Every optional backfill is now individually tolerated (`.catch(() => undefined)`).
+- **The bootstrap promise is dropped on failure** so the next request retries instead of serving 500 from a poisoned isolate.
+- **Edge caching can serve a stale 500** for a moment after a redeploy. Verify with a cache-busting query string (`/?cb=123`) before assuming the deploy failed.
+- **`gsk hosted deploy`** publishes this project; destructive variants (`--rebuild_db`, `worker_delete`) are only used on explicit request. A normal deploy adds missing tables and columns in place.
 
 ## Notes
 
