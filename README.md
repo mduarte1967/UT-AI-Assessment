@@ -67,7 +67,7 @@ Embed the ready-made button on unifiedtech.com. The snippet is generated for the
 </a>
 ```
 
-Flow: prospect clicks the button → `/start` form (organisation + location + contact + consent) → the client, assessment, unique token and default targets are created → the questionnaire link is e-mailed → the confirmation page shows the link if delivery is unavailable.
+Flow: prospect clicks the button → `/start` form (organisation + location + contact + consent) → the client, assessment and unique token are created → the questionnaire link is e-mailed → the confirmation page shows the link if delivery is unavailable.
 
 **Protections on the public form:** honeypot field (bots get a 400), consent checkbox required, one active assessment per contact e-mail (409 on duplicates), 5 registrations per IP per hour (429), `signup_log` table for forensics, and every attempt recorded in the audit trail under actor `self-signup`. The administrator can switch the whole flow off in Settings (the form then shows a closed notice with an optional contact e-mail, and POST returns 403).
 
@@ -87,8 +87,8 @@ An in-app 5-step guide is available at **`/ajuda`** (menu item "How to use"):
 1. **Sign in as administrator** — `/admin/login` with the credentials above.
 2. **Register the client** — in *New client*, including the **contact name and e-mail** — or let the prospect self-register at `/start`. The invitation goes to that e-mail address either way.
 3. **Configure e-mail delivery** (once) — in *Settings → E-mail delivery*: a Resend API key (recommended) or SendGrid, a verified sender, subject, opening text and link validity. The *Test* button confirms delivery.
-4. **The client answers through the link** — no password, with autosave; they can close and return until they submit.
-5. **The report is generated immediately** — business outcome map, weighted AI Maturity Index, the 7-dimension scorecard, the current × target radar, the initiative portfolio (business transformation + AI enabling), the P0–P4 prioritisation and the AI Transformation Roadmap; PDF/XLSX available to both the client and the administrator. **The client fills in no initiatives:** the framework selects them from a catalogue of 28 (see below).
+4. **The client answers through the link** — no password, with autosave; every question is **closed** (single choice, multi-select or the 1–5 scale). There is **no target to declare**: the comparison uses the framework benchmark. They can close and return until they submit.
+5. **The report is generated immediately** — business outcome map, weighted AI Maturity Index, the 7-dimension scorecard, the current × benchmark radar, the initiative portfolio (business transformation + AI enabling), the P0–P4 prioritisation and the AI Transformation Roadmap; PDF/XLSX available to both the client and the administrator. **The client fills in no initiatives:** the framework selects them from a catalogue of 28 (see below).
 
 ## The method — UT Outcome-Driven AI Assessment Framework
 
@@ -100,13 +100,17 @@ Structure: **Unified Questionnaire (35 questions · 7 dimensions) → Business O
 |---|---|---|
 | **O — Outcome Discovery** | Objectives, problems, KPIs, opportunities. Not scored; feeds the outcome map and the portfolio. | 9 |
 | **M — Maturity Assessment** | Existing capabilities, processes and controls. Scored 1–5. | 23 |
-| **H — Hybrid** | Both, keeping the evidence text. Scored 1–5. | 3 (TEC01, TEC04, ECO01) |
+| **H — Hybrid** | Both, keeping the evidence options selected. Scored 1–5. | 3 (TEC01, TEC04, ECO01) |
+
+**Every question is closed.** The O questions are multi-select lists (outcomes, KPI gaps, constraints, processes, customer fronts, decisions, workflows, data sources, employee groups); the M questions are the 1–5 scale with the dimension's anchors; the H questions are the 1–5 scale **plus a closed evidence checklist** (documented policy, system in operation, metrics, named owners, audit record, no structured evidence). Nothing is free text, so the report can compare answers across clients.
 
 Per dimension: Strategy 3O/2M · Use Cases 4O/1M · Data 1O/4M · Technology 3M/2H · Security 5M · People 1O/4M · Economics 4M/1H.
 
 **Maturity scale 1–5** — 1 Initial · 2 Emerging · 3 Defined · 4 Managed · 5 Optimized. Each dimension has its own five anchor phrases (`MATURITY_MATRIX`), shown under every maturity question. *Maturity is determined from the evidence collected, not only from the respondent's perception.*
 
-**Weighted AI Maturity Index** — Strategy 15%, Use Cases 20%, Data 15%, Technology 15%, Security 15%, People 10%, Economics 10%. Reference scorecard: current **1.90**, target **3.35**, weighted gap **1.45** (reproduced exactly by the seeded bank and the scoring engine).
+**Weighted AI Maturity Index** — Strategy 15%, Use Cases 20%, Data 15%, Technology 15%, Security 15%, People 10%, Economics 10%. Reference scorecard: current **1.90**, benchmark target **3.35**, weighted gap **1.45** (reproduced exactly by the seeded bank and the scoring engine).
+
+**Targets are the framework benchmark, not a client declaration.** `TARGET_BENCHMARK` in `src/lib/questions.ts` fixes the reference — Strategy 3.0, Use Cases 4.0, Data 3.0, Technology 4.0, Security 3.0, People 3.0, Economics 3.0 — which weighted by the index gives **3.35/5**. Every client is measured against the same reference, so gaps stay comparable across clients and across cycles. The report shows the benchmark on the cover, in the executive summary, in the scorecard note, in the radar legend and in the maturity-to-initiative matrix.
 
 **Initiative catalogue IN01–IN28** with traceability (dimension → related questions → recommended initiative → trigger), split into two families:
 
@@ -144,7 +148,7 @@ Per dimension: Strategy 3O/2M · Use Cases 4O/1M · Data 1O/4M · Technology 3M/
 | GET | `/admin` | Dashboard: KPIs, dimension distribution, client table, filters, exports |
 | GET | `/admin/clients/new` | New-client form |
 | POST | `/admin/clients/new` | Creates the client, the assessment, the unique link and sends the e-mail |
-| GET | `/admin/clients/:id` | Client record: link status, reports, scorecard, answers, targets |
+| GET | `/admin/clients/:id` | Client record: link status, reports, scorecard, answers, framework benchmark |
 | GET/POST | `/admin/clients/:id/edit` | Edits client data |
 | POST | `/admin/clients/:id/resend` | Rotates the token (invalidating the old link) and re-sends the e-mail |
 | POST | `/admin/clients/:id/reopen` | Reopens the questionnaire for a new response version |
@@ -163,9 +167,9 @@ Per dimension: Strategy 3O/2M · Use Cases 4O/1M · Data 1O/4M · Technology 3M/
 ## Data architecture
 
 - **Storage**: Cloudflare D1 (SQLite). 13 tables — `clients`, `assessments`, `questions`, `responses`, `dimension_targets`, `initiatives`, `reports`, `admin_users`, `sessions`, `settings`, `audit_log`, `signup_log`, `schema_meta`.
-- **Bootstrap**: idempotent — `SCHEMA_SQL` + `COLUMN_MIGRATIONS` plus `ensureSeed` run once per isolate. The seed is versioned (`settings.seed_version`, currently `3`). Questions are **upserted by slug**, so existing question IDs — and the responses already collected against them — stay valid.
+- **Bootstrap**: idempotent — `SCHEMA_SQL` + `COLUMN_MIGRATIONS` plus `ensureSeed` run once per isolate. The seed is versioned (`settings.seed_version`, currently `5`). Questions are **upserted by slug**, so existing question IDs — and the responses already collected against them — stay valid.
 - **Question bank**: 7 dimensions, **35 questions** (`src/lib/questions.ts`), bank version **2** (`QUESTION_BANK_VERSION`). References are stable codes `STR01…ECO05`, and `slug === ref`, so reports and the initiative mapping can be traced back to the answer.
-- **Scoring**: all M and H answers are 1–5; a dimension's level is the **mean** of its scored answers (one decimal, O questions excluded); the AI Maturity Index is the **weighted** mean of the seven dimensions; the weighted gap is weighted target − weighted current. Initiatives are scored on the seven prioritisation criteria and classified P0–P4 with a foundation override.
+- **Scoring**: all M and H answers are 1–5; a dimension's level is the **mean** of its scored answers (one decimal, O questions excluded); the AI Maturity Index is the **weighted** mean of the seven dimensions; the weighted gap is weighted benchmark − weighted current. Hybrid answers persist `{ v, sel }` — the level and the closed evidence indices. Initiatives are scored on the seven prioritisation criteria and classified P0–P4 with a foundation override.
 - **Two families of initiative**: `category: 'transformation' | 'enabling'` in `src/lib/initiatives.ts`; the report always shows both groups, so a technology roadmap is never presented without the business results it serves.
 - **Security**: PBKDF2-SHA256 (150k iterations) via Web Crypto, opaque session tokens in `sessions` (HttpOnly `SameSite=Lax` cookie, 12h TTL), expiring per-assessment link tokens, per-client data isolation through the token, and an append-only `audit_log`.
 
@@ -175,7 +179,8 @@ Per dimension: Strategy 3O/2M · Use Cases 4O/1M · Data 1O/4M · Technology 3M/
 
 - **Seed version 2 — localisation.** Translates `clients.vertical` and `clients.tamanho_faixa` values captured while the UI was in Portuguese, replaces the stored Portuguese mail subject/intro defaults, and updates the seeded administrator name.
 - **Seed version 3 — US/Caribbean client model.** Copies historical `cnpj` values into `tax_id` and sets `country = 'Brazil'` on records that predate the country field (that is where they were captured). New records carry `country`, `postal_code` and `website`.
-- **Seed version 4 — Outcome-Driven framework.** Seeds the 35-question bank as `questions.versao = 2` with `ref` and `persona`, and backfills `ref = slug` on legacy rows. Assessments created from now on carry `questionario_versao = 2`; older assessments keep version 1 and their answers/reports stay readable. Default 12-month target per dimension is now **3 (Defined)** on the 1–5 scale.
+- **Seed version 4 — Outcome-Driven framework.** Seeds the 35-question bank as `questions.versao = 2` with `ref` and `persona`, and backfills `ref = slug` on legacy rows. Assessments created from now on carry `questionario_versao = 2`; older assessments keep version 1 and their answers/reports stay readable.
+- **Seed version 5 — closed questionnaire.** Re-upserts the bank so the nine outcome-discovery questions switch from open text to multi-select and the three hybrid questions gain the closed evidence options. Per-dimension targets are no longer collected or stored for new assessments; the target comes from `TARGET_BENCHMARK`.
 - **Column upgrades.** `src/lib/schema.ts` exports `COLUMN_MIGRATIONS` (`ALTER TABLE … ADD COLUMN …`), run on every boot with duplicate-column errors ignored, so an existing database picks up new columns without a manual migration step. `migrations/0006_outcome_driven_framework.sql` mirrors the question-bank changes for operators who run migrations explicitly.
 
 ## Deployment
