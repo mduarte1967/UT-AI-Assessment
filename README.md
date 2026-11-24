@@ -88,7 +88,7 @@ An in-app 5-step guide is available at **`/ajuda`** (menu item "How to use"):
 2. **Register the client** — in *New client*, including the **contact name and e-mail** — or let the prospect self-register at `/start`. The invitation goes to that e-mail address either way.
 3. **Configure e-mail delivery** (once) — in *Settings → E-mail delivery*: a Resend API key (recommended) or SendGrid, a verified sender, subject, opening text and link validity. The *Test* button confirms delivery.
 4. **The client answers through the link** — no password, with autosave; they can close and return until they submit.
-5. **The report is generated immediately** — index, 7-dimension scorecard, current × target radar, prioritised initiatives and a 90-day plan; PDF/XLSX available to both the client and the administrator.
+5. **The report is generated immediately** — index, 7-dimension scorecard, current × target radar, prioritised initiatives and a 90-day plan; PDF/XLSX available to both the client and the administrator. **The client fills in no initiatives:** the method selects them from a curated library (see below).
 
 ## Endpoints
 

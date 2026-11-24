@@ -87,7 +87,11 @@ CREATE TABLE IF NOT EXISTS initiatives (
   beneficio TEXT,
   urgencia INTEGER NOT NULL DEFAULT 2,
   prioridade_calculada TEXT,
-  proximo_passo TEXT
+  proximo_passo TEXT,
+  codigo TEXT,
+  kpi TEXT,
+  motivo TEXT,
+  origem TEXT NOT NULL DEFAULT 'metodo'
 );
 CREATE TABLE IF NOT EXISTS reports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,4 +156,8 @@ ALTER TABLE clients ADD COLUMN tax_id TEXT;
 ALTER TABLE clients ADD COLUMN country TEXT;
 ALTER TABLE clients ADD COLUMN postal_code TEXT;
 ALTER TABLE clients ADD COLUMN website TEXT;
+ALTER TABLE initiatives ADD COLUMN codigo TEXT;
+ALTER TABLE initiatives ADD COLUMN kpi TEXT;
+ALTER TABLE initiatives ADD COLUMN motivo TEXT;
+ALTER TABLE initiatives ADD COLUMN origem TEXT NOT NULL DEFAULT 'metodo';
 `

@@ -87,53 +87,6 @@ export function renderFormPage(ctx: FormContext): string {
     </section>`
   }).join('')
 
-  const iniCards = [0, 1, 2, 3, 4]
-    .map((idx) => {
-      const ini = ctx.initiatives[idx] || {}
-      return `<div class="ini-card" data-ini="${idx}">
-        <div class="ini-head"><strong>Initiative ${idx + 1}</strong>
-          <span class="small muted">Optional</span>
-        </div>
-        <div class="field"><label for="ini-${idx}-nome">Initiative name</label>
-          <input type="text" id="ini-${idx}-nome" data-ini-field="nome" data-ini-idx="${idx}" value="${esc(
-            ini.nome || ''
-          )}" placeholder="e.g. Assisted triage of medical reports" maxlength="120">
-        </div>
-        <div class="grid-2">
-          <div class="field"><label for="ini-${idx}-problema">Problem it solves</label>
-            <textarea id="ini-${idx}-problema" data-ini-field="problema" data-ini-idx="${idx}" maxlength="400" placeholder="Which business pain does it address?">${esc(
-              ini.problema || ''
-            )}</textarea>
-          </div>
-          <div class="field"><label for="ini-${idx}-beneficio">Expected benefit</label>
-            <textarea id="ini-${idx}-beneficio" data-ini-field="beneficio" data-ini-idx="${idx}" maxlength="400" placeholder="Expected measurable impact">${esc(
-              ini.beneficio || ''
-            )}</textarea>
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="field" style="margin:0">
-            <label for="ini-${idx}-urgencia">Urgency level</label>
-            <select id="ini-${idx}-urgencia" data-ini-field="urgencia" data-ini-idx="${idx}">
-              <option value="1" ${Number(ini.urgencia || 0) === 1 ? 'selected' : ''}>1 · Low</option>
-              <option value="2" ${Number(ini.urgencia || 0) === 2 || !ini.urgencia ? 'selected' : ''}>2 · Medium</option>
-              <option value="3" ${Number(ini.urgencia || 0) === 3 ? 'selected' : ''}>3 · High</option>
-            </select>
-          </div>
-          <div class="field" style="margin:0">
-            <label for="ini-${idx}-dimensao">Supporting dimension</label>
-            <select id="ini-${idx}-dimensao" data-ini-field="dimensao" data-ini-idx="${idx}">
-              <option value="">Not sure / several</option>
-              ${DIMENSIONS.map(
-                (d) => `<option value="${d.key}" ${ini.dimensao === d.key ? 'selected' : ''}>${esc(d.nome)}</option>`
-              ).join('')}
-            </select>
-          </div>
-        </div>
-      </div>`
-    })
-    .join('')
-
   const textoSec = textQs.length
     ? `<section class="section" id="contexto" data-section="contexto">
       <div class="section-head">
@@ -218,10 +171,22 @@ ${textoSec}
 <section class="section" id="iniciativas" data-section="iniciativas">
   <div class="section-head">
     <div class="dim-icon"><i class="fa-solid fa-lightbulb" aria-hidden="true"></i></div>
-    <div><h2>Candidate AI initiatives</h2>
-      <div class="sub">Up to 5 initiatives. If left blank, the report suggests initiatives for your industry.</div></div>
+    <div><h2>Recommended initiatives</h2>
+      <div class="sub">Nothing to fill in here — the method proposes them for you.</div></div>
   </div>
-  <div style="margin-top:14px">${iniCards}</div>
+  <div class="alert info" style="margin-top:14px">
+    <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+    <div>
+      <strong>You do not need to list any initiatives.</strong>
+      When you submit, the report selects a set of initiatives from the Unified Technologies library
+      based on your maturity index and the gap in each of the seven dimensions, then places them across
+      the three horizons of the 90-day plan. The same answers always produce the same plan, so later
+      versions stay comparable.
+      <div class="small muted" style="margin-top:8px">
+        You can still add context in the optional question above — it appears in the executive summary.
+      </div>
+    </div>
+  </div>
 </section>
 ${revisao}
 <div class="sticky-bar no-print">
@@ -323,7 +288,7 @@ function formScript(token: string, pendingCount: number): string {
   return `
 (function(){
   var TOKEN = ${JSON.stringify(token)};
-  var pendingQ = {}, pendingIni = {}, pendingTargets = {}, inFlight = false, timer = null;
+  var pendingQ = {}, pendingTargets = {}, inFlight = false, timer = null;
 
   function setState(kind, text){
     ['save-state','sticky-state'].forEach(function(id){
@@ -414,17 +379,15 @@ function formScript(token: string, pendingCount: number): string {
     });
     var t = Object.keys(pendingTargets);
     if (t.length) out.targets = t.map(function(k){ return { dimensao: k, meta: pendingTargets[k] }; });
-    var i = Object.keys(pendingIni);
-    if (i.length) out.iniciativas = i.map(function(k){ return pendingIni[k]; });
     return out;
   }
 
   function flush(force){
     var p = payload();
-    if (!p.respostas.length && !p.targets && !p.iniciativas) return Promise.resolve();
+    if (!p.respostas.length && !p.targets) return Promise.resolve();
     if (inFlight) { if (force) setTimeout(function(){ flush(true); }, 500); return Promise.resolve(); }
     inFlight = true;
-    pendingQ = {}; pendingIni = {}; pendingTargets = {};
+    pendingQ = {}; pendingTargets = {};
     setState('saving', '<i class="fa-solid fa-circle-notch fa-spin"></i> saving…');
     return fetch('/api/a/'+TOKEN+'/save', {
       method: 'POST',
@@ -434,12 +397,11 @@ function formScript(token: string, pendingCount: number): string {
       if (!r.ok) throw new Error('http '+r.status);
       inFlight = false;
       setState('saved', '<i class="fa-solid fa-circle-check"></i> saved automatically');
-      if (Object.keys(pendingQ).length || Object.keys(pendingIni).length || Object.keys(pendingTargets).length) flush(false);
+      if (Object.keys(pendingQ).length || Object.keys(pendingTargets).length) flush(false);
     }).catch(function(){
       inFlight = false;
       p.respostas.forEach(function(r){ pendingQ[r.question_id] = r.valor; });
       if (p.targets) p.targets.forEach(function(t){ pendingTargets[t.dimensao] = t.meta; });
-      if (p.iniciativas) p.iniciativas.forEach(function(x){ pendingIni[x.idx] = x; });
       setState('error', '<i class="fa-solid fa-triangle-exclamation"></i> could not save — retrying shortly');
       setTimeout(function(){ flush(false); }, 3000);
     });
@@ -458,18 +420,6 @@ function formScript(token: string, pendingCount: number): string {
       mark(qid, tipo, val);
       queue();
       return;
-    }
-    if (el.matches('[data-ini-field]')) {
-      var idx = Number(el.getAttribute('data-ini-idx'));
-      var card = el.closest('.ini-card');
-      var obj = { idx: idx, nome:'', problema:'', beneficio:'', urgencia:2, dimensao:null };
-      card.querySelectorAll('[data-ini-field]').forEach(function(f){
-        var fk = f.getAttribute('data-ini-field');
-        obj[fk] = fk === 'urgencia' ? Number(f.value) : (f.value || null);
-      });
-      if (!obj.nome) { delete pendingIni[idx]; return; }
-      pendingIni[idx] = obj;
-      queue();
     }
   });
 

@@ -65,7 +65,8 @@ export function helpPage(o: HelpOpts): string {
     'The client answers through the link (no password)',
     `The client opens the link in the browser, answers the 7 dimensions (~30 min) and the responses are
      <strong>saved automatically</strong> — they can close and come back later, until they submit.
-     In the last step they review outstanding items, declare 12-month targets and up to 5 candidate initiatives.`
+     In the last step they review outstanding items and declare the 12-month targets per dimension.
+     There is nothing to fill in about initiatives: the method generates them.`
   )}
 
   ${STEP(

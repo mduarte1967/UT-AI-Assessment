@@ -1089,29 +1089,8 @@ app.post('/api/a/:token/save', async (c) => {
   }
 
   if (Array.isArray(body.iniciativas)) {
-    for (const ini of body.iniciativas) {
-      const idx = Number(ini?.idx ?? 0)
-      const nome = String(ini?.nome || '').trim()
-      if (!nome) continue
-      const dim = DIMENSIONS.some((d) => d.key === ini?.dimensao) ? ini.dimensao : null
-      const urgencia = Math.max(1, Math.min(3, Number(ini?.urgencia) || 2))
-      const existing = await c.env.DB.prepare('SELECT id FROM initiatives WHERE assessment_id = ? AND ordem = ?')
-        .bind(a.id, idx + 1)
-        .first<{ id: number }>()
-      if (existing) {
-        await c.env.DB.prepare(
-          'UPDATE initiatives SET nome = ?, problema = ?, beneficio = ?, urgencia = ?, dimensao = ? WHERE id = ?'
-        )
-          .bind(nome, String(ini?.problema || ''), String(ini?.beneficio || ''), urgencia, dim, existing.id)
-          .run()
-      } else {
-        await c.env.DB.prepare(
-          'INSERT INTO initiatives (assessment_id, ordem, nome, problema, beneficio, urgencia, dimensao) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        )
-          .bind(a.id, idx + 1, nome, String(ini?.problema || ''), String(ini?.beneficio || ''), urgencia, dim)
-          .run()
-      }
-    }
+    // Legacy clients may still post initiatives. They are ignored: the method
+    // now owns the initiative set, generated at submit time from the library.
   }
 
   if (a.estado === 'aguardando') {
@@ -1195,13 +1174,34 @@ app.post('/api/a/:token/submit', async (c) => {
     .bind(nowIso(), nowIso(), a.id)
     .run()
 
-  // persiste prioridade calculada das iniciativas
+  // Persist the method-generated initiative set for this assessment. The set is
+  // deterministic for a given profile, so replacing the rows keeps the record in
+  // sync with the report exactly (it is also fully embedded in reports.conteudo).
+  await c.env.DB.prepare('DELETE FROM initiatives WHERE assessment_id = ?').bind(a.id).run()
+  let ordemIni = 0
   for (const ini of data.iniciativas) {
-    if (ini.id > 0) {
-      await c.env.DB.prepare('UPDATE initiatives SET prioridade_calculada = ?, proximo_passo = ? WHERE id = ?')
-        .bind(ini.prioridade_calculada, ini.proximo_passo, ini.id)
-        .run()
-    }
+    ordemIni += 1
+    await c.env.DB.prepare(
+      `INSERT INTO initiatives
+         (assessment_id, ordem, dimensao, nome, problema, beneficio, urgencia,
+          prioridade_calculada, proximo_passo, codigo, kpi, motivo, origem)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'metodo')`
+    )
+      .bind(
+        a.id,
+        ordemIni,
+        ini.dimensao,
+        ini.nome,
+        ini.problema,
+        ini.beneficio,
+        ini.urgencia,
+        ini.prioridade_calculada,
+        ini.proximo_passo,
+        ini.codigo || null,
+        ini.kpi || null,
+        ini.motivo || null
+      )
+      .run()
   }
 
   await audit(c.env.DB, a.client.responsavel_email, 'assessment_submetido', 'assessments', a.id, `report v${versao} generated (id ${inserted.meta.last_row_id})`)

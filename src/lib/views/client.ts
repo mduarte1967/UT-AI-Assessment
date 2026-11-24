@@ -67,7 +67,7 @@ export function clientFormPage(
           <option value="">Select…</option>
           ${VERTICAIS.map((x) => `<option value="${esc(x)}" ${v.vertical === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}
         </select>
-        <span class="hint">Defines the suggested initiatives when the client does not declare any.</span>
+        <span class="hint">Used for the industry affinity nudge when the method selects the initiatives.</span>
       </div>
       <div class="field">
         <label for="tamanho_faixa">Company size (employees)</label>

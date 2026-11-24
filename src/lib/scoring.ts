@@ -147,6 +147,12 @@ export type IniciativaCalc = {
   origem: 'cliente' | 'metodo'
   bloqueio: string | null
   horizonte: '1-30' | '31-60' | '61-90'
+  /** Library code (e.g. STR-F1) — present on method-generated initiatives. */
+  codigo?: string
+  /** Success measure proposed by the method. */
+  kpi?: string
+  /** Why the engine selected this initiative for this profile. */
+  motivo?: string
 }
 
 /** Matriz de priorização: urgência × dimensões de suporte, com bloqueio por Critical */
@@ -161,6 +167,9 @@ export function prioritizeInitiatives(
     dimensao: string | null
     proximo_passo?: string | null
     origem?: 'cliente' | 'metodo'
+    codigo?: string
+    kpi?: string
+    motivo?: string
   }[]
 ): IniciativaCalc[] {
   const byDim = Object.fromEntries(rows.map((r) => [r.dimensao, r]))
@@ -201,9 +210,29 @@ export function prioritizeInitiatives(
       origem: ini.origem || 'cliente',
       bloqueio: critica && ini.origem !== 'metodo' ? critica.nome : null,
       horizonte,
+      codigo: ini.codigo,
+      kpi: ini.kpi,
+      motivo: ini.motivo,
     }
   })
-  return calc.sort((a, b) => PESO[a.prioridade_calculada as ScoreRow['prioridade']] - PESO[b.prioridade_calculada as ScoreRow['prioridade']] || b.urgencia - a.urgencia)
+  const sorted = calc.sort(
+    (a, b) =>
+      PESO[a.prioridade_calculada as ScoreRow['prioridade']] - PESO[b.prioridade_calculada as ScoreRow['prioridade']] ||
+      b.urgencia - a.urgencia
+  )
+
+  // Distribute across the three horizons so the 90-day plan is never degenerate.
+  // Items stay in priority order, but the most critical ones are capped in the
+  // first horizon instead of all landing there at once.
+  const n = sorted.length
+  if (n >= 3) {
+    const h1 = Math.max(1, Math.ceil(n * 0.4))
+    const h2 = Math.max(1, Math.ceil(n * 0.35))
+    sorted.forEach((item, i) => {
+      item.horizonte = i < h1 ? '1-30' : i < h1 + h2 ? '31-60' : '61-90'
+    })
+  }
+  return sorted
 }
 
 export function defaultNextStep(dim: string | null, prioridade: string): string {
