@@ -103,7 +103,7 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
       const nome = r.nome_fantasia || r.razao_social
       return `<tr>
       <td>
-        <div class="client-name"><a href="/clientes/${r.client_id}">${esc(nome)}</a></div>
+        <div class="client-name"><a href="/admin/clients/${r.client_id}">${esc(nome)}</a></div>
         <div class="client-sub">${esc(r.razao_social)}${r.vertical ? ` · ${esc(r.vertical)}` : ''}${r.country ? ` · ${esc(r.country)}` : ''}</div>
       </td>
       <td>
@@ -115,10 +115,10 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
       <td class="num"><strong>${r.indice === null ? '—' : formatIndex(r.indice)}</strong></td>
       <td>
         <div class="row-actions">
-          <a class="btn btn-sm btn-ghost" href="/clientes/${r.client_id}" title="Open client record"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></a>
+          <a class="btn btn-sm btn-ghost" href="/admin/clients/${r.client_id}" title="Open client record"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></a>
           ${
             r.report_id
-              ? `<a class="btn btn-sm btn-ghost" href="/clientes/${r.client_id}/relatorio" title="View report"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i></a>`
+              ? `<a class="btn btn-sm btn-ghost" href="/admin/clients/${r.client_id}/report" title="View report"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i></a>`
               : ''
           }
           ${
@@ -126,7 +126,7 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
               ? `<a class="btn btn-sm btn-ghost" href="/a/${esc(r.link_token)}" target="_blank" rel="noopener" title="Open client link"><i class="fa-solid fa-link" aria-hidden="true"></i></a>`
               : ''
           }
-          <a class="btn btn-sm btn-ghost" href="/clientes/${r.client_id}/editar" title="Edit"><i class="fa-solid fa-pen" aria-hidden="true"></i></a>
+          <a class="btn btn-sm btn-ghost" href="/admin/clients/${r.client_id}/edit" title="Edit"><i class="fa-solid fa-pen" aria-hidden="true"></i></a>
         </div>
       </td>
     </tr>`
@@ -139,9 +139,9 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
         <h2>Clients</h2>
         <div class="sub">${data.rows.length} of ${data.totalGeral} record(s)</div>
       </div>
-      <a class="btn btn-sm" href="/painel/export.xlsx"><i class="fa-solid fa-file-excel" aria-hidden="true"></i> Export XLSX</a></div>
+      <a class="btn btn-sm" href="/admin/export/workbook.xlsx"><i class="fa-solid fa-file-excel" aria-hidden="true"></i> Export XLSX</a></div>
       <div class="toolbar">
-        <form method="get" action="/painel" class="toolbar" style="flex:1;margin:0">
+        <form method="get" action="/admin" class="toolbar" style="flex:1;margin:0">
           <div class="search">
             <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
             <input type="search" name="q" value="${esc(data.filtros.q)}" placeholder="Search by company, contact, Tax ID, city…" aria-label="Search clients">
@@ -164,7 +164,7 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
               .join('')}
           </select>
           <button class="btn btn-ghost btn-sm" type="submit">Filter</button>
-          ${data.filtros.q || data.filtros.estado || data.filtros.vertical ? `<a class="btn btn-ghost btn-sm" href="/painel">Clear</a>` : ''}
+          ${data.filtros.q || data.filtros.estado || data.filtros.vertical ? `<a class="btn btn-ghost btn-sm" href="/admin">Clear</a>` : ''}
         </form>
       </div>
       <div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap">${chips}</div>
@@ -179,7 +179,7 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
         <tbody>${rows}</tbody>
       </table></div>`
         : `<div class="empty"><i class="fa-regular fa-building" aria-hidden="true"></i>
-        No client found. <a href="/clientes/novo">Register your first client</a>.</div>`
+        No client found. <a href="/admin/clients/new">Register your first client</a>.</div>`
     }
   </section>`
 
@@ -187,9 +187,9 @@ export function dashboardPage(data: DashData, admin: { nome: string; email: stri
     {
       title: 'Practice dashboard',
       subtitle: 'Unified Technologies · AI maturity assessment',
-      active: '/painel',
+      active: '/admin',
       admin,
-      actions: `<a class="btn" href="/clientes/novo"><i class="fa-solid fa-plus" aria-hidden="true"></i> New client</a>`,
+      actions: `<a class="btn" href="/admin/clients/new"><i class="fa-solid fa-plus" aria-hidden="true"></i> New client</a>`,
     },
     kpis,
     `<div class="stack" style="margin-bottom:18px">${clientesCard}</div>`,

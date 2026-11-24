@@ -235,7 +235,16 @@ ${revisao}
 </div>
 <script>${formScript(ctx.token, pendentes.length)}</script>`
 
-  return publicShell(`Assessment · ${ctx.empresa}`, body, { backHref: undefined })
+  return publicShell(`Assessment · ${ctx.empresa}`, body, {
+    hero: {
+      kicker: 'Questionnaire',
+      title: ctx.empresa,
+      lede: `Answers are saved automatically. Estimated time: about 30 minutes.`,
+      breadcrumb: `Assessment · ${esc(ctx.responsavel)}`,
+    },
+    wide: false,
+    bodyClass: 'public-shell assessment-shell',
+  })
 }
 
 function pendingHtml(questions: QRow[], respostas: Record<number, unknown>): string {
@@ -515,7 +524,7 @@ function formScript(token: string, pendingCount: number): string {
         fetch('/api/a/'+TOKEN+'/submit', { method:'POST', headers: { 'Content-Type':'application/json' }, body: '{}' })
           .then(function(r){ return r.json().then(function(j){ return { status: r.status, body: j }; }); })
           .then(function(res){
-            if (res.status === 200 && res.body.ok) { window.location.href = '/a/'+TOKEN+'/relatorio'; return; }
+            if (res.status === 200 && res.body.ok) { window.location.href = '/a/'+TOKEN+'/report'; return; }
             setState('error', '<i class="fa-solid fa-triangle-exclamation"></i> ' + (res.body.message || 'please check the outstanding items'));
             window.location.reload();
           })

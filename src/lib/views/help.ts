@@ -30,11 +30,11 @@ export function helpPage(o: HelpOpts): string {
   ${STEP(
     1,
     'Sign in as administrator',
-    `Go to <span class="mono">/login</span> and use the e-mail <strong>${esc(o.admin.email)}</strong>.
-     ${o.mailConfigured ? '' : 'The initial password is a first-access one — change it under <a href="/configuracoes#acesso">Settings</a>.'}
+    `Go to <span class="mono">/admin/login</span> and use the e-mail <strong>${esc(o.admin.email)}</strong>.
+     ${o.mailConfigured ? '' : 'The initial password is a first-access one — change it under <a href="/admin/settings#access">Settings</a>.'}
      There is no user sign-up screen: the administrator is the <strong>only profile with a login</strong>, created automatically on first run.
      If you need more administrators, contact the application's technical owner.`,
-    `<a class="btn btn-sm btn-ghost" href="/configuracoes#acesso">Change my password</a>`
+    `<a class="btn btn-sm btn-ghost" href="/admin/settings#access">Change my password</a>`
   )}
 
   ${STEP(
@@ -43,18 +43,18 @@ export function helpPage(o: HelpOpts): string {
     `Two paths, same result. <strong>Option A (manual):</strong> under <strong>New client</strong>, provide the legal name, industry,
      company size and — most importantly — the <strong>name and e-mail of the contact</strong>. That is the address the invitation goes to.
      <strong>Option B (self-registration):</strong> the prospect fills in the public form at
-     <span class="mono">/comecar</span> and the assessment is created automatically, with the link e-mailed to them.
+     <span class="mono">/start</span> and the assessment is created automatically, with the link e-mailed to them.
      Either way the system creates the assessment, generates a unique link and (if delivery is configured) sends the e-mail straight away.
      Without delivery configured, the link appears on screen with a <em>Copy</em> button — you send it manually.`,
-    `<a class="btn btn-sm" href="/clientes/novo"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Register client</a>
-     <a class="btn btn-sm btn-ghost" href="/comecar" target="_blank" rel="noopener">Open the public form</a>
-     <a class="btn btn-sm btn-ghost" href="/configuracoes#autocadastro">Self-registration settings</a>`
+    `<a class="btn btn-sm" href="/admin/clients/new"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Register client</a>
+     <a class="btn btn-sm btn-ghost" href="/start" target="_blank" rel="noopener">Open the public form</a>
+     <a class="btn btn-sm btn-ghost" href="/admin/settings#signup">Self-registration settings</a>`
   )}
 
   ${STEP(
     3,
     'Configure e-mail delivery (once)',
-    `Under <a href="/configuracoes#email">Settings → E-mail delivery</a>, enter the Resend API key (recommended) or SendGrid,
+    `Under <a href="/admin/settings#email">Settings → E-mail delivery</a>, enter the Resend API key (recommended) or SendGrid,
      the verified sender and the link validity (${o.ttlDays} days).
      Use the <em>Test</em> button to confirm the e-mail arrives.
      ${o.mailConfigured ? badge('Delivery configured', 'ok') : badge('Not configured yet', 'warn')}`
@@ -73,9 +73,9 @@ export function helpPage(o: HelpOpts): string {
     'The report is generated immediately',
     `On submit, the system calculates the index, builds the results table for the 7 dimensions, the current × target radar,
      the prioritised initiatives and the 90-day plan. The client sees and downloads it as PDF/XLSX;
-     you follow everything on the <a href="/painel">Dashboard</a>, with a full base export.
+     you follow everything on the <a href="/admin">Dashboard</a>, with a full base export.
      To correct answers after submission, use <em>Reopen questionnaire</em> on the client record — that generates a new report version and preserves the previous one.`,
-    `<a class="btn btn-sm btn-ghost" href="/painel"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Open the dashboard</a>`
+    `<a class="btn btn-sm btn-ghost" href="/admin"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Open the dashboard</a>`
   )}
 </section>
 
@@ -85,8 +85,8 @@ export function helpPage(o: HelpOpts): string {
     <div class="faq">
       <details open>
         <summary>Can a prospect start the assessment without me doing anything?</summary>
-        <p>Yes. Point them at <span class="mono">/comecar</span> — or embed the ready-made button from
-        <a href="/configuracoes#autocadastro">Settings → Public self-registration</a> on the Unified Technologies website.
+        <p>Yes. Point them at <span class="mono">/start</span> — or embed the ready-made button from
+        <a href="/admin/settings#signup">Settings → Public self-registration</a> on the Unified Technologies website.
         They fill in the form, receive the link by e-mail and the assessment appears on your dashboard under actor
         <span class="mono">self-signup</span>. You can switch self-registration off at any time, and the form is protected
         against duplicate e-mails, bots and repeated submissions from the same network.</p>
@@ -125,7 +125,7 @@ export function helpPage(o: HelpOpts): string {
       <details>
         <summary>How do I export the data?</summary>
         <p>On the dashboard: <em>Export XLSX</em> (4 sheets: clients, responses, indexes, initiatives) or
-        <span class="mono">/painel/export.csv</span>. Every report also offers PDF and XLSX export of the results table.</p>
+        <span class="mono">/admin/export/clients.csv</span>. Every report also offers PDF and XLSX export of the results table.</p>
       </details>
     </div>
   </section>
@@ -149,14 +149,14 @@ export function helpPage(o: HelpOpts): string {
     <h3 style="font-size:13px;margin-bottom:8px">System map</h3>
     <table class="data" style="font-size:12.5px">
       <tbody>
-        <tr><td class="mono">/login</td><td>Administrator sign-in</td></tr>
-        <tr><td class="mono">/painel</td><td>KPIs, clients and exports</td></tr>
-        <tr><td class="mono">/comecar</td><td>Public self-registration (no login)</td></tr>
-        <tr><td class="mono">/clientes/novo</td><td>Registration + link generation</td></tr>
-        <tr><td class="mono">/clientes/:id</td><td>Record, responses, reports and actions</td></tr>
+        <tr><td class="mono">/admin/login</td><td>Administrator sign-in</td></tr>
+        <tr><td class="mono">/admin</td><td>KPIs, clients and exports</td></tr>
+        <tr><td class="mono">/start</td><td>Public self-registration (no login)</td></tr>
+        <tr><td class="mono">/admin/clients/new</td><td>Registration + link generation</td></tr>
+        <tr><td class="mono">/admin/clients/:id</td><td>Record, responses, reports and actions</td></tr>
         <tr><td class="mono">/a/:token</td><td>Client questionnaire (no login)</td></tr>
-        <tr><td class="mono">/a/:token/relatorio</td><td>Client report (PDF/XLSX)</td></tr>
-        <tr><td class="mono">/configuracoes</td><td>Admin password, e-mail delivery and self-registration</td></tr>
+        <tr><td class="mono">/a/:token/report</td><td>Client report (PDF/XLSX)</td></tr>
+        <tr><td class="mono">/admin/settings</td><td>Admin password, e-mail delivery and self-registration</td></tr>
       </tbody>
     </table>
   </section>
@@ -180,9 +180,9 @@ export function helpPage(o: HelpOpts): string {
     {
       title: 'How to use',
       subtitle: 'Practice guide',
-      active: '/ajuda',
+      active: '/admin/help',
       admin: o.admin,
-      actions: `<a class="btn btn-sm" href="/clientes/novo"><i class="fa-solid fa-plus" aria-hidden="true"></i> New client</a>`,
+      actions: `<a class="btn btn-sm" href="/admin/clients/new"><i class="fa-solid fa-plus" aria-hidden="true"></i> New client</a>`,
     },
     conteudo
   )

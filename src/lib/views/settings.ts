@@ -22,9 +22,9 @@ export function settingsPage(s: Settings, admin: { nome: string; email: string }
     {
       title: 'Settings',
       subtitle: 'System administration',
-      active: '/configuracoes',
+      active: '/admin/settings',
       admin,
-      actions: `<a class="btn btn-ghost btn-sm" href="/ajuda"><i class="fa-regular fa-circle-question" aria-hidden="true"></i> How to use</a>`,
+      actions: `<a class="btn btn-ghost btn-sm" href="/admin/help"><i class="fa-regular fa-circle-question" aria-hidden="true"></i> How to use</a>`,
     },
     opts.flash ? alertBox(opts.flash.kind, esc(opts.flash.text)) : '',
 
@@ -42,7 +42,7 @@ export function settingsPage(s: Settings, admin: { nome: string; email: string }
           <div class="sub">The only profile with a login. Clients enter through a link, without a password.</div>
         </div></div>
 
-        <form method="post" action="/configuracoes/acesso" novalidate>
+        <form method="post" action="/admin/settings/access" novalidate>
           <div class="field">
             <label for="nome">Name</label>
             <input type="text" id="nome" name="nome" value="${esc(admin.nome)}" maxlength="120" required>
@@ -88,7 +88,7 @@ export function settingsPage(s: Settings, admin: { nome: string; email: string }
               )
         }
 
-        <form method="post" action="/configuracoes/email" novalidate>
+        <form method="post" action="/admin/settings/email" novalidate>
           <div class="field">
             <label for="mail_provider">Provider</label>
             <select id="mail_provider" name="mail_provider">
@@ -126,7 +126,7 @@ export function settingsPage(s: Settings, admin: { nome: string; email: string }
 
         <div class="divider"></div>
         <h3 style="font-size:13px;margin-bottom:8px">Send a test</h3>
-        <form method="post" action="/configuracoes/testar" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <form method="post" action="/admin/settings/test" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
           <div class="field" style="flex:1;min-width:220px;margin:0">
             <label for="teste_email">Send a test e-mail to</label>
             <input type="email" id="teste_email" name="teste_email" value="${esc(admin.email)}" required>
@@ -143,7 +143,7 @@ export function settingsPage(s: Settings, admin: { nome: string; email: string }
       </div>
       ${s.self_signup !== '0' ? badge('Enabled', 'ok') : badge('Disabled', 'muted')}</div>
 
-      <form method="post" action="/configuracoes/autocadastro" novalidate>
+      <form method="post" action="/admin/settings/signup" novalidate>
         <div class="field">
           <label for="self_signup">Status</label>
           <select id="self_signup" name="self_signup">
@@ -163,7 +163,7 @@ export function settingsPage(s: Settings, admin: { nome: string; email: string }
       <h3 style="font-size:13px;margin-bottom:6px">Button for the Unified Technologies website</h3>
       <p class="small muted" style="margin-top:0">
         Paste this snippet into the site (WordPress: a <em>Custom HTML</em> block). It points at
-        <span class="mono">${esc(opts.baseUrl || '')}/comecar</span> and opens the registration form.
+        <span class="mono">${esc(opts.baseUrl || '')}/start</span> and opens the registration form.
       </p>
       <div class="link-box" style="align-items:flex-start">
         <i class="fa-solid fa-code" aria-hidden="true" style="margin-top:10px"></i>
@@ -173,7 +173,7 @@ export function settingsPage(s: Settings, admin: { nome: string; email: string }
         <button class="btn btn-sm btn-ghost" type="button" data-copy="signup-snippet"><i class="fa-regular fa-copy" aria-hidden="true"></i> Copy</button>
       </div>
       <p class="small muted" style="margin-top:8px">
-        The public form is always open to review at <a href="/comecar" target="_blank" rel="noopener" class="mono">/comecar</a>.
+        The public form is always open to review at <a href="/start" target="_blank" rel="noopener" class="mono">/start</a>.
         Registrations and failures are recorded in the audit trail under actor <span class="mono">self-signup</span>.
       </p>
     </section>
@@ -182,7 +182,7 @@ export function settingsPage(s: Settings, admin: { nome: string; email: string }
       <div class="card-head"><div><h2>How the client e-mail works</h2>
         <div class="sub">The client does <strong>not</strong> create an account. They receive a unique link.</div></div></div>
       <ol class="small" style="margin:0;padding-left:20px;line-height:1.9">
-        <li>You register the client — or the prospect self-registers at <span class="mono">/comecar</span> — providing the <strong>contact e-mail</strong> (the person who will answer).</li>
+        <li>You register the client — or the prospect self-registers at <span class="mono">/start</span> — providing the <strong>contact e-mail</strong> (the person who will answer).</li>
         <li>The system creates the assessment and generates a <strong>unique link</strong> valid for ${esc(s.link_ttl_days)} days.</li>
         <li>With an API key configured, the invitation is <strong>sent automatically</strong>; without a key, the link appears on screen so you can copy it and send it from your own mailbox.</li>
         <li>The client opens the link, answers in ~30 minutes and gets the report immediately — no login.</li>

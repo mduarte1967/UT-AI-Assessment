@@ -39,6 +39,7 @@ import { clientFormPage, clientDetailPage } from './lib/views/client'
 import { renderFormPage } from './lib/views/form'
 import { renderAnswersPage } from './lib/views/answers'
 import { signupPage, signupDonePage } from './lib/views/signup'
+import { landingPage } from './lib/views/landing'
 import { adminShell, publicShell, doc, alertBox, badge } from './lib/views/layout'
 
 const app = new Hono<{ Bindings: Env; Variables: { admin: any } }>()
@@ -83,7 +84,7 @@ function requireAdmin() {
   return async (c: any, next: any) => {
     const admin = await getAdminFromRequest(c.env.DB, c.req.raw)
     if (!admin) {
-      if (c.req.method === 'GET') return c.redirect('/login')
+      if (c.req.method === 'GET') return c.redirect('/admin/login')
       return c.json({ error: 'unauthorized' }, 401)
     }
     c.set('admin', admin)
@@ -100,9 +101,9 @@ async function latestReport(db: D1Database, assessmentId: number | null) {
 }
 
 /* ── autenticação ──────────────────────────────────────────────────────── */
-app.get('/login', async (c) => {
+app.get('/admin/login', async (c) => {
   const admin = await getAdminFromRequest(c.env.DB, c.req.raw)
-  if (admin) return c.redirect('/painel')
+  if (admin) return c.redirect('/admin')
 
   const fa = await defaultCredsActive(c.env.DB)
   return c.html(
@@ -113,7 +114,7 @@ app.get('/login', async (c) => {
   )
 })
 
-app.post('/login', async (c) => {
+app.post('/admin/login', async (c) => {
   const body = await c.req.parseBody()
   const email = String(body.email || '').trim().toLowerCase()
   const senha = String(body.senha || '')
@@ -140,27 +141,27 @@ app.post('/login', async (c) => {
 
   return new Response(null, {
     status: 303,
-    headers: { Location: '/painel', 'Set-Cookie': sessionCookie(token) },
+    headers: { Location: '/admin', 'Set-Cookie': sessionCookie(token) },
   })
 })
 
-app.post('/logout', async (c) => {
+app.post('/admin/logout', async (c) => {
   const cookie = c.req.header('Cookie') || ''
   const match = cookie.match(/utr_sid=([^;]+)/)
   if (match) await destroySession(c.env.DB, match[1])
   return new Response(null, {
     status: 303,
-    headers: { Location: '/login', 'Set-Cookie': clearSessionCookie() },
+    headers: { Location: '/admin/login', 'Set-Cookie': clearSessionCookie() },
   })
 })
 
 app.get('/', async (c) => {
-  const admin = await getAdminFromRequest(c.env.DB, c.req.raw)
-  return c.redirect(admin ? '/painel' : '/comecar')
+  const { enabled, contactEmail } = await signupConfig(c.env)
+  return c.html(landingPage({ open: enabled, contactEmail }))
 })
 
 /* ── configurações ─────────────────────────────────────────────────────── */
-app.get('/configuracoes', requireAdmin(), async (c) => {
+app.get('/admin/settings', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const s = await getSettings(c.env.DB)
   const cfg = await mailConfig(c.env, c.env.DB)
@@ -187,15 +188,15 @@ app.get('/configuracoes', requireAdmin(), async (c) => {
 /** Embeddable button for the Unified Technologies website. */
 function buildSignupSnippet(base: string): string {
   return `<!-- AI Maturity Assessment — self-registration button -->
-<a href="${base}/comecar"
-   style="display:inline-block;padding:14px 30px;background:#A8D432;color:#17220a;
-          font-family:Inter,Arial,sans-serif;font-weight:700;font-size:16px;
-          text-decoration:none;border-radius:9px">
-  Start your AI maturity assessment
+<a href="${base}/start"
+   style="display:inline-block;padding:14px 28px;background:#B0D000;color:#0B2545;
+          font-family:Roboto,'Helvetica Neue',Arial,sans-serif;font-weight:700;font-size:16px;
+          text-decoration:none;border-radius:4px;border:2px solid #B0D000">
+  Start the AI readiness assessment
 </a>`
 }
 
-app.post('/configuracoes/autocadastro', requireAdmin(), async (c) => {
+app.post('/admin/settings/signup', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const body = await c.req.parseBody()
   const enabled = String(body.self_signup || '1') === '0' ? '0' : '1'
@@ -206,10 +207,10 @@ app.post('/configuracoes/autocadastro', requireAdmin(), async (c) => {
   await setSetting(db, 'signup_contact_email', contact, admin.email)
   await audit(db, admin.email, 'configuracoes_autocadastro', 'settings', 'self_signup', enabled === '1' ? 'enabled' : 'disabled')
 
-  return c.redirect(`/configuracoes?ok=${encodeURIComponent('Self-registration settings saved.')}#autocadastro`)
+  return c.redirect(`/admin/settings?ok=${encodeURIComponent('Self-registration settings saved.')}#signup`)
 })
 
-app.post('/configuracoes/acesso', requireAdmin(), async (c) => {
+app.post('/admin/settings/access', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const body = await c.req.parseBody()
   const nome = String(body.nome || '').trim()
@@ -218,8 +219,8 @@ app.post('/configuracoes/acesso', requireAdmin(), async (c) => {
   const senhaNova = String(body.senha_nova || '')
   const senhaConf = String(body.senha_conf || '')
 
-  const ok = (msg: string) => c.redirect(`/configuracoes?ok=${encodeURIComponent(msg)}#acesso`)
-  const fail = (msg: string) => c.redirect(`/configuracoes?erro=${encodeURIComponent(msg)}#acesso`)
+  const ok = (msg: string) => c.redirect(`/admin/settings?ok=${encodeURIComponent(msg)}#access`)
+  const fail = (msg: string) => c.redirect(`/admin/settings?erro=${encodeURIComponent(msg)}#access`)
 
   if (!nome || !email) return fail('Name and e-mail are required.')
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return fail('Invalid e-mail address.')
@@ -248,7 +249,7 @@ app.post('/configuracoes/acesso', requireAdmin(), async (c) => {
   return ok('Administrator details updated.')
 })
 
-app.post('/configuracoes/email', requireAdmin(), async (c) => {
+app.post('/admin/settings/email', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const body = await c.req.parseBody()
   const provider = String(body.mail_provider || 'resend')
@@ -270,19 +271,19 @@ app.post('/configuracoes/email', requireAdmin(), async (c) => {
   }
 
   await audit(db, admin.email, 'configuracoes_email', 'settings', 'mail', `provider ${provider}${key ? ' · key updated' : ''}`)
-  return c.redirect(`/configuracoes?ok=${encodeURIComponent('E-mail settings saved.')}#email`)
+  return c.redirect(`/admin/settings?ok=${encodeURIComponent('E-mail settings saved.')}#email`)
 })
 
-app.post('/configuracoes/testar', requireAdmin(), async (c) => {
+app.post('/admin/settings/test', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const body = await c.req.parseBody()
   const destino = String(body.teste_email || '').trim()
-  if (!destino) return c.redirect(`/configuracoes?erro=${encodeURIComponent('Please provide a destination e-mail.')}#email`)
+  if (!destino) return c.redirect(`/admin/settings?erro=${encodeURIComponent('Please provide a destination e-mail.')}#email`)
 
   const cfg = await mailConfig(c.env, c.env.DB)
   if (!cfg.configured) {
     return c.redirect(
-      `/configuracoes?erro=${encodeURIComponent('No API key saved — fill it in and save before testing.')}#email`
+      `/admin/settings?erro=${encodeURIComponent('No API key saved — fill it in and save before testing.')}#email`
     )
   }
 
@@ -291,13 +292,13 @@ app.post('/configuracoes/testar', requireAdmin(), async (c) => {
 
   return c.redirect(
     result.sent
-      ? `/configuracoes?ok=${encodeURIComponent(`Test e-mail sent to ${destino}.`)}#email`
-      : `/configuracoes?erro=${encodeURIComponent(`Delivery failed: ${result.detail}`)}#email`
+      ? `/admin/settings?ok=${encodeURIComponent(`Test e-mail sent to ${destino}.`)}#email`
+      : `/admin/settings?erro=${encodeURIComponent(`Delivery failed: ${result.detail}`)}#email`
   )
 })
 
 /* ── guia de uso ───────────────────────────────────────────────────────── */
-app.get('/ajuda', requireAdmin(), async (c) => {
+app.get('/admin/help', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const cfg = await mailConfig(c.env, c.env.DB)
   const amostra = await c.env.DB.prepare(
@@ -316,7 +317,7 @@ app.get('/ajuda', requireAdmin(), async (c) => {
 })
 
 /* ── dashboard ─────────────────────────────────────────────────────────── */
-app.get('/painel', requireAdmin(), async (c) => {
+app.get('/admin', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const q = String(c.req.query('q') || '').trim()
   const estado = String(c.req.query('estado') || '')
@@ -437,10 +438,10 @@ app.get('/painel', requireAdmin(), async (c) => {
   )
 })
 
-app.get('/clientes', (c) => c.redirect('/painel'))
+app.get('/admin/clients', (c) => c.redirect('/admin'))
 
 /* ── exportações ───────────────────────────────────────────────────────── */
-app.get('/painel/export.csv', requireAdmin(), async (c) => {
+app.get('/admin/export/clients.csv', requireAdmin(), async (c) => {
   const rows = await exportRows(c.env.DB)
   const csv = buildCsv(rows)
   return new Response(csv, {
@@ -451,7 +452,7 @@ app.get('/painel/export.csv', requireAdmin(), async (c) => {
   })
 })
 
-app.get('/painel/export.xlsx', requireAdmin(), async (c) => {
+app.get('/admin/export/workbook.xlsx', requireAdmin(), async (c) => {
   const sheets = await exportSheets(c.env.DB)
   const bytes = buildXlsx(sheets)
   return new Response(bytes as unknown as BodyInit, {
@@ -653,12 +654,12 @@ async function createClientWithAssessment(
   return { clientId, token, link, expira, mail: { sent: result.sent, detail: result.detail } }
 }
 
-app.get('/clientes/novo', requireAdmin(), async (c) => {
+app.get('/admin/clients/new', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   return c.html(clientFormPage(admin, {}, { mode: 'novo' }))
 })
 
-app.post('/clientes/novo', requireAdmin(), async (c) => {
+app.post('/admin/clients/new', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const body = await c.req.parseBody()
   const dados = clientFromBody(body)
@@ -689,7 +690,7 @@ app.post('/clientes/novo', requireAdmin(), async (c) => {
   )
 })
 
-app.get('/clientes/:id', requireAdmin(), async (c) => {
+app.get('/admin/clients/:id', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const id = Number(c.req.param('id'))
   const detail = await loadClientDetail(c.env, id, baseUrl(c))
@@ -741,7 +742,7 @@ async function loadClientDetail(env: Env, clientId: number, base: string) {
   }
 }
 
-app.get('/clientes/:id/editar', requireAdmin(), async (c) => {
+app.get('/admin/clients/:id/edit', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const id = Number(c.req.param('id'))
   const client = await c.env.DB.prepare('SELECT * FROM clients WHERE id = ? AND ativo = 1').bind(id).first<any>()
@@ -749,7 +750,7 @@ app.get('/clientes/:id/editar', requireAdmin(), async (c) => {
   return c.html(clientFormPage(admin, client, { mode: 'editar' }))
 })
 
-app.post('/clientes/:id/editar', requireAdmin(), async (c) => {
+app.post('/admin/clients/:id/edit', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const id = Number(c.req.param('id'))
   const body = await c.req.parseBody()
@@ -774,10 +775,10 @@ app.post('/clientes/:id/editar', requireAdmin(), async (c) => {
     .run()
 
   await audit(c.env.DB, admin.email, 'cliente_editado', 'clients', id)
-  return c.redirect(`/clientes/${id}?ok=${encodeURIComponent('Client details updated.')}`)
+  return c.redirect(`/admin/clients/${id}?ok=${encodeURIComponent('Client details updated.')}`)
 })
 
-app.post('/clientes/:id/reenviar', requireAdmin(), async (c) => {
+app.post('/admin/clients/:id/resend', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const id = Number(c.req.param('id'))
   const client = await c.env.DB.prepare('SELECT * FROM clients WHERE id = ? AND ativo = 1').bind(id).first<any>()
@@ -815,7 +816,7 @@ app.post('/clientes/:id/reenviar', requireAdmin(), async (c) => {
   )
 
   return c.redirect(
-    `/clientes/${id}?ok=${encodeURIComponent(
+    `/admin/clients/${id}?ok=${encodeURIComponent(
       result.sent
         ? 'New link generated and e-mailed. The previous link has been invalidated.'
         : `New link generated (automatic delivery unavailable: ${result.detail}). Copy the link from the client record.`
@@ -823,7 +824,7 @@ app.post('/clientes/:id/reenviar', requireAdmin(), async (c) => {
   )
 })
 
-app.post('/clientes/:id/reabrir', requireAdmin(), async (c) => {
+app.post('/admin/clients/:id/reopen', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const id = Number(c.req.param('id'))
   const assessment = await c.env.DB.prepare('SELECT * FROM assessments WHERE client_id = ? ORDER BY id DESC LIMIT 1')
@@ -838,10 +839,10 @@ app.post('/clientes/:id/reabrir', requireAdmin(), async (c) => {
     .run()
 
   await audit(c.env.DB, admin.email, 'formulario_reaberto', 'assessments', assessment.id, 'new response version enabled')
-  return c.redirect(`/clientes/${id}?ok=${encodeURIComponent('Questionnaire reopened. The client can add to it and resubmit; a new report version will be generated.')}`)
+  return c.redirect(`/admin/clients/${id}?ok=${encodeURIComponent('Questionnaire reopened. The client can add to it and resubmit; a new report version will be generated.')}`)
 })
 
-app.post('/clientes/:id/excluir', requireAdmin(), async (c) => {
+app.post('/admin/clients/:id/delete', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const id = Number(c.req.param('id'))
   await c.env.DB.prepare(
@@ -850,23 +851,23 @@ app.post('/clientes/:id/excluir', requireAdmin(), async (c) => {
     .bind(nowIso(), admin.email, id)
     .run()
   await audit(c.env.DB, admin.email, 'cliente_excluido', 'clients', id, 'logical deletion — data preserved')
-  return c.redirect(`/painel?ok=${encodeURIComponent('Client deleted (logical deletion).')}`)
+  return c.redirect(`/admin?ok=${encodeURIComponent('Client deleted (logical deletion).')}`)
 })
 
 /* ── relatórios (admin) ────────────────────────────────────────────────── */
-app.get('/clientes/:id/relatorio', requireAdmin(), async (c) => {
+app.get('/admin/clients/:id/report', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const id = Number(c.req.param('id'))
   return renderAdminReport(c, admin, id, c.req.query('v'))
 })
 
-app.get('/clientes/:id/relatorio.pdf', requireAdmin(), async (c) => {
+app.get('/admin/clients/:id/report.pdf', requireAdmin(), async (c) => {
   const admin = c.get('admin')
   const id = Number(c.req.param('id'))
   return renderAdminReport(c, admin, id, c.req.query('v'), true)
 })
 
-app.get('/clientes/:id/relatorio.xlsx', requireAdmin(), async (c) => {
+app.get('/admin/clients/:id/report.xlsx', requireAdmin(), async (c) => {
   const id = Number(c.req.param('id'))
   return reportXlsx(c, id, c.req.query('v'))
 })
@@ -882,7 +883,7 @@ async function renderAdminReport(c: any, admin: any, clientId: number, vParam?: 
   if (!reports.length) {
     return c.html(
       adminShell(
-        { title: client.nome_fantasia || client.razao_social, subtitle: 'Report', active: '/clientes', admin },
+        { title: client.nome_fantasia || client.razao_social, subtitle: 'Report', active: '/admin/clients', admin },
         alertBox('warn', 'No report generated yet. The report is created automatically when the client submits the questionnaire.')
       )
     )
@@ -922,9 +923,9 @@ async function renderAdminReport(c: any, admin: any, clientId: number, vParam?: 
 
   const actions = print
     ? ''
-    : `<a class="btn btn-sm" href="/clientes/${clientId}/relatorio.pdf?v=${chosen.versao}" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> PDF</a>
-       <a class="btn btn-sm btn-ghost" href="/clientes/${clientId}/relatorio.xlsx?v=${chosen.versao}"><i class="fa-solid fa-file-excel" aria-hidden="true"></i> XLSX</a>
-       <a class="btn btn-sm btn-ghost" href="/clientes/${clientId}">Client record</a>`
+    : `<a class="btn btn-sm" href="/admin/clients/${clientId}/report.pdf?v=${chosen.versao}" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> PDF</a>
+       <a class="btn btn-sm btn-ghost" href="/admin/clients/${clientId}/report.xlsx?v=${chosen.versao}"><i class="fa-solid fa-file-excel" aria-hidden="true"></i> XLSX</a>
+       <a class="btn btn-sm btn-ghost" href="/admin/clients/${clientId}">Client record</a>`
 
   const meta = `<div class="card" style="margin-bottom:16px;padding:12px 16px">
     <div class="small muted">
@@ -955,7 +956,7 @@ async function renderAdminReport(c: any, admin: any, clientId: number, vParam?: 
       {
         title: client.nome_fantasia || client.razao_social,
         subtitle: 'Maturity report',
-        active: '/clientes',
+        active: '/admin/clients',
         admin,
         actions,
       },
@@ -1019,7 +1020,7 @@ app.get('/a/:token', async (c) => {
     return expiredPage(c, a.client.nome_fantasia || a.client.razao_social, a.expira_em)
   }
   if (a.estado === 'submetido' || a.estado === 'gerado') {
-    return c.redirect(`/a/${token}/relatorio`)
+    return c.redirect(`/a/${token}/report`)
   }
 
   const questions = await questionsFor(c.env, a.questionario_versao)
@@ -1128,7 +1129,7 @@ app.post('/api/a/:token/submit', async (c) => {
   if (!a) return c.json({ ok: false, message: 'Invalid link.' }, 404)
   if (linkExpired(a)) return c.json({ ok: false, message: 'Link expired.' }, 410)
   if (a.estado === 'gerado' && !a.reaberto) {
-    return c.json({ ok: true, redirect: `/a/${token}/relatorio` })
+    return c.json({ ok: true, redirect: `/a/${token}/report` })
   }
 
   const body: any = await c.req.json().catch(() => ({}))
@@ -1205,11 +1206,11 @@ app.post('/api/a/:token/submit', async (c) => {
 
   await audit(c.env.DB, a.client.responsavel_email, 'assessment_submetido', 'assessments', a.id, `report v${versao} generated (id ${inserted.meta.last_row_id})`)
 
-  return c.json({ ok: true, redirect: `/a/${token}/relatorio`, versao, report_id: inserted.meta.last_row_id })
+  return c.json({ ok: true, redirect: `/a/${token}/report`, versao, report_id: inserted.meta.last_row_id })
 })
 
 /* ── respostas em modo somente leitura (cliente) ───────────────────────── */
-app.get('/a/:token/respostas', async (c) => {
+app.get('/a/:token/answers', async (c) => {
   const token = c.req.param('token')
   const a = await assessmentByToken(c.env, token)
   if (!a) return notFoundPage(c, 'Invalid link', 'This link does not match an active assessment.')
@@ -1238,17 +1239,17 @@ app.get('/a/:token/respostas', async (c) => {
 })
 
 /* ── relatório público (cliente) ───────────────────────────────────────── */
-app.get('/a/:token/relatorio', async (c) => {
+app.get('/a/:token/report', async (c) => {
   const token = c.req.param('token')
   return renderClientReport(c, token, c.req.query('v'), false)
 })
 
-app.get('/a/:token/relatorio.pdf', async (c) => {
+app.get('/a/:token/report.pdf', async (c) => {
   const token = c.req.param('token')
   return renderClientReport(c, token, c.req.query('v'), true)
 })
 
-app.get('/a/:token/relatorio.xlsx', async (c) => {
+app.get('/a/:token/report.xlsx', async (c) => {
   const token = c.req.param('token')
   const a = await assessmentByToken(c.env, token)
   if (!a) return notFoundPage(c, 'Invalid link', 'Please request a new link from your Unified Technologies consultant.')
@@ -1329,9 +1330,9 @@ async function renderClientReport(c: any, token: string, vParam?: string, print 
       <div class="small muted">v${chosen.versao} · ${esc(fmtDate(chosen.gerado_em))} · ${esc(a.client.nome_fantasia || a.client.razao_social)}</div>
     </div>
     <div class="report-actions">
-      <a class="btn btn-sm" href="/a/${token}/relatorio.pdf?v=${chosen.versao}" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Export PDF</a>
-      <a class="btn btn-sm btn-ghost" href="/a/${token}/relatorio.xlsx?v=${chosen.versao}"><i class="fa-solid fa-file-excel" aria-hidden="true"></i> XLSX</a>
-      <a class="btn btn-sm btn-ghost" href="/a/${token}/respostas">View answers</a>
+      <a class="btn btn-sm" href="/a/${token}/report.pdf?v=${chosen.versao}" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Export PDF</a>
+      <a class="btn btn-sm btn-ghost" href="/a/${token}/report.xlsx?v=${chosen.versao}"><i class="fa-solid fa-file-excel" aria-hidden="true"></i> XLSX</a>
+      <a class="btn btn-sm btn-ghost" href="/a/${token}/answers">View answers</a>
     </div>
   </div>`
 
@@ -1359,12 +1360,12 @@ async function signupConfig(env: Env): Promise<{ enabled: boolean; contactEmail:
   return { enabled: (s.self_signup ?? '1') !== '0', contactEmail: s.signup_contact_email || '' }
 }
 
-app.get('/comecar', async (c) => {
+app.get('/start', async (c) => {
   const { enabled, contactEmail } = await signupConfig(c.env)
   return c.html(signupPage({ closed: !enabled, contactEmail }))
 })
 
-app.post('/comecar', async (c) => {
+app.post('/start', async (c) => {
   const { enabled, contactEmail } = await signupConfig(c.env)
   if (!enabled) return c.html(signupPage({ closed: true, contactEmail }), 403)
 
@@ -1445,13 +1446,13 @@ function notFoundPage(c: any, title: string, message: string) {
   return c.html(
     publicShell(
       title,
-      `<div class="card" style="max-width:560px;margin:60px auto;text-align:center">
-        <i class="fa-solid fa-link-slash" style="font-size:30px;color:var(--blue-200)" aria-hidden="true"></i>
-        <h1 style="font-size:22px;margin:14px 0 8px">${esc(title)}</h1>
+      `<div class="card accent" style="max-width:620px;margin:8px auto;text-align:center">
+        <i class="fa-solid fa-link-slash" style="font-size:26px;color:var(--muted)" aria-hidden="true"></i>
+        <h2 style="font-size:1.4rem;margin:16px 0 8px">${esc(title)}</h2>
         <p class="muted">${esc(message)}</p>
-        <p class="small muted" style="margin-top:18px">Unified Technologies · AI Maturity Assessment</p>
+        <a class="btn btn-ghost" href="/" style="margin-top:10px"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to the overview</a>
       </div>`,
-      { backHref: '/', backLabel: 'Home' }
+      { hero: { kicker: '3-Day AI Readiness Assessment', title, lede: message } }
     ),
     404
   )
@@ -1461,13 +1462,14 @@ function expiredPage(c: any, empresa: string, expira: string | null) {
   return c.html(
     publicShell(
       'Link expired',
-      `<div class="card" style="max-width:560px;margin:60px auto;text-align:center">
-        <i class="fa-regular fa-clock" style="font-size:30px;color:var(--warn)" aria-hidden="true"></i>
-        <h1 style="font-size:22px;margin:14px 0 8px">This link has expired</h1>
+      `<div class="card accent" style="max-width:620px;margin:8px auto;text-align:center">
+        <i class="fa-regular fa-clock" style="font-size:26px;color:var(--warn)" aria-hidden="true"></i>
+        <h2 style="font-size:1.4rem;margin:16px 0 8px">This link has expired</h2>
         <p class="muted">The assessment link for <strong>${esc(empresa)}</strong> ${expira ? `expired on ${esc(fmtDate(expira))}` : 'is no longer valid'}.
         Please request a new link from your Unified Technologies consultant — your previous answers are preserved.</p>
+        <a class="btn btn-ghost" href="/" style="margin-top:10px"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to the overview</a>
       </div>`,
-      { backHref: '/', backLabel: 'Back' }
+      { hero: { kicker: '3-Day AI Readiness Assessment', title: 'Link expired' } }
     ),
     410
   )

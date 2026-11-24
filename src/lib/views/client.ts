@@ -32,7 +32,7 @@ export function clientFormPage(
   opts: { error?: string; mode: 'novo' | 'editar'; link?: string; mailNote?: string; expiraEm?: string }
 ): string {
   const v = data
-  const action = opts.mode === 'novo' ? '/clientes/novo' : `/clientes/${v.id}/editar`
+  const action = opts.mode === 'novo' ? '/admin/clients/new' : `/admin/clients/${v.id}/edit`
   const country = v.country || DEFAULT_COUNTRY
 
   const form = `<form method="post" action="${action}" class="card" novalidate>
@@ -122,7 +122,7 @@ export function clientFormPage(
       <button class="btn" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> ${
         opts.mode === 'novo' ? 'Register and generate link' : 'Save changes'
       }</button>
-      <a class="btn btn-ghost" href="${opts.mode === 'novo' ? '/painel' : `/clientes/${v.id}`}">Cancel</a>
+      <a class="btn btn-ghost" href="${opts.mode === 'novo' ? '/admin' : `/admin/clients/${v.id}`}">Cancel</a>
     </div>
   </form>`
 
@@ -146,9 +146,9 @@ export function clientFormPage(
     {
       title: opts.mode === 'novo' ? 'Register client' : 'Edit client',
       subtitle: 'Clients',
-      active: opts.mode === 'novo' ? '/clientes/novo' : '/clientes',
+      active: opts.mode === 'novo' ? '/admin/clients/new' : '/admin/clients',
       admin,
-      actions: `<a class="btn btn-ghost" href="/painel">Back to dashboard</a>`,
+      actions: `<a class="btn btn-ghost" href="/admin">Back to dashboard</a>`,
     },
     linkCard,
     form,
@@ -197,7 +197,7 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${a ? badge(estadoLabel(a.estado), estadoTone(a.estado)) : badge('No assessment', 'muted')}
-        <a class="btn btn-sm btn-ghost" href="/clientes/${c.id}/editar"><i class="fa-solid fa-pen" aria-hidden="true"></i> Edit</a>
+        <a class="btn btn-sm btn-ghost" href="/admin/clients/${c.id}/edit"><i class="fa-solid fa-pen" aria-hidden="true"></i> Edit</a>
       </div>
     </div>
     <div class="grid-3 small">
@@ -227,17 +227,17 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
     }
     <div class="divider"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <form method="post" action="/clientes/${c.id}/reenviar" onsubmit="return confirm('Generate a new link? The previous link will be invalidated.')">
+      <form method="post" action="/admin/clients/${c.id}/resend" onsubmit="return confirm('Generate a new link? The previous link will be invalidated.')">
         <button class="btn btn-sm btn-ghost" type="submit"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Resend link</button>
       </form>
       ${
         a && (a.estado === 'submetido' || a.estado === 'gerado')
-          ? `<form method="post" action="/clientes/${c.id}/reabrir" onsubmit="return confirm('Reopen the questionnaire for a new response version?')">
+          ? `<form method="post" action="/admin/clients/${c.id}/reopen" onsubmit="return confirm('Reopen the questionnaire for a new response version?')">
               <button class="btn btn-sm btn-ghost" type="submit"><i class="fa-solid fa-lock-open" aria-hidden="true"></i> Reopen questionnaire</button>
             </form>`
           : ''
       }
-      <form method="post" action="/clientes/${c.id}/excluir" onsubmit="return confirm('Logically delete this client? The data remains stored for audit purposes.')">
+      <form method="post" action="/admin/clients/${c.id}/delete" onsubmit="return confirm('Logically delete this client? The data remains stored for audit purposes.')">
         <button class="btn btn-sm btn-danger" type="submit"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Delete</button>
       </form>
     </div>
@@ -248,7 +248,7 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
       <h2>Reports</h2>
       <div class="sub">${d.reports.length} version(s) generated · previous versions remain accessible</div>
     </div>
-    ${ultimo ? `<a class="btn btn-sm" href="/clientes/${c.id}/relatorio"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> View report v${ultimo.versao}</a>` : ''}
+    ${ultimo ? `<a class="btn btn-sm" href="/admin/clients/${c.id}/report"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> View report v${ultimo.versao}</a>` : ''}
     </div>
     ${
       d.reports.length
@@ -262,9 +262,9 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
               <td>${formatIndex(r.indice_geral)} / 5</td>
               <td>${esc(fmtDateTime(r.gerado_em))}</td>
               <td class="num"><div class="row-actions">
-                <a class="btn btn-sm btn-ghost" href="/clientes/${c.id}/relatorio?v=${r.versao}">Open</a>
-                <a class="btn btn-sm btn-ghost" href="/clientes/${c.id}/relatorio.xlsx?v=${r.versao}">XLSX</a>
-                <a class="btn btn-sm btn-ghost" href="/clientes/${c.id}/relatorio.pdf?v=${r.versao}" target="_blank" rel="noopener">PDF</a>
+                <a class="btn btn-sm btn-ghost" href="/admin/clients/${c.id}/report?v=${r.versao}">Open</a>
+                <a class="btn btn-sm btn-ghost" href="/admin/clients/${c.id}/report.xlsx?v=${r.versao}">XLSX</a>
+                <a class="btn btn-sm btn-ghost" href="/admin/clients/${c.id}/report.pdf?v=${r.versao}" target="_blank" rel="noopener">PDF</a>
               </div></td>
             </tr>`
             )
@@ -355,9 +355,9 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
     {
       title: nome,
       subtitle: 'Client',
-      active: '/clientes',
+      active: '/admin/clients',
       admin,
-      actions: `<a class="btn btn-ghost" href="/painel">Dashboard</a>`,
+      actions: `<a class="btn btn-ghost" href="/admin">Dashboard</a>`,
     },
     flash ? alertBox('ok', esc(flash)) : '',
     infoCard,

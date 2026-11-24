@@ -22,19 +22,22 @@ export function loginPage(opts: LoginOpts = {}): string {
     `<div class="login-wrap">
   <aside class="login-hero">
     <div>
-      <a href="/login" class="logo-chip"><img src="/static/logo.png" alt="Unified Technologies"></a>
+      <span class="logo-chip"><img src="/static/logo.png" alt="Unified Technologies"></span>
+      <span class="kicker" style="display:block;margin:34px 0 0">Practice console</span>
       <h1>AI Maturity<br>Assessment</h1>
-      <p>A structured diagnosis across the seven dimensions of AI readiness —
-      from client registration to a report with dimension scores, a radar chart and a 90-day plan.</p>
+      <p>A structured diagnosis across the seven dimensions of AI readiness — from client
+      registration to a report with dimension scores, a radar chart and a 90-day plan.</p>
       <div class="hero-dims">${dims}</div>
     </div>
-    <div class="hero-foot">Unified Technologies</div>
+    <div class="hero-foot">Unified Technologies · Co-Managed Security Intelligence</div>
   </aside>
 
   <section class="login-panel">
     <div class="login-box">
+      <span class="kicker">Restricted area</span>
       <h2>Administrator sign-in</h2>
-      <p class="lead">Restricted to practice management. Clients access through the unique link sent by e-mail.</p>
+      <p class="lead">Only for practice management. Clients reach their assessment through the
+      unique link sent by e-mail — no account, no password.</p>
 
       ${
         opts.error
@@ -67,7 +70,7 @@ export function loginPage(opts: LoginOpts = {}): string {
           : ''
       }
 
-      <form method="post" action="/login" novalidate>
+      <form method="post" action="/admin/login" novalidate>
         <div class="field">
           <label for="email">E-mail</label>
           <input type="email" id="email" name="email" value="${esc(opts.email || fa?.email || '')}" autocomplete="username" required ${fa ? '' : 'autofocus'}>
@@ -85,8 +88,12 @@ export function loginPage(opts: LoginOpts = {}): string {
       </p>
       <div class="divider"></div>
       <p class="small muted">
-        <strong>Are you a client?</strong> You do not need a password: just use the exact link you received by e-mail —
-        it opens your company's questionnaire.
+        <strong>Are you the client being assessed?</strong> You do not need a password: use the exact link
+        you received by e-mail — it opens your company's questionnaire.
+      </p>
+      <p class="small muted" style="margin-top:14px">
+        <a href="https://www.unifiedtech.com" target="_blank" rel="noopener">unifiedtech.com</a>
+        &nbsp;·&nbsp; © 2026 Unified Technologies
       </p>
     </div>
   </section>

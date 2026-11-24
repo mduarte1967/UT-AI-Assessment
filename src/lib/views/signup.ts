@@ -1,6 +1,6 @@
 import { DIMENSIONS } from '../questions'
 import { esc } from '../util'
-import { doc, publicShell, publicHeader, alertBox } from './layout'
+import { publicShell, alertBox } from './layout'
 import { COUNTRY_NAMES, DEFAULT_COUNTRY, REGION_SUGGESTIONS, VERTICAIS_PUBLIC, PORTES_PUBLIC } from '../geo'
 
 export type SignupData = {
@@ -40,13 +40,14 @@ export function signupPage(opts: SignupOpts = {}): string {
   if (opts.closed) {
     return publicShell(
       'Self-registration closed',
-      `<div class="card" style="max-width:600px;margin:48px auto;text-align:center">
-        <i class="fa-solid fa-lock" style="font-size:28px;color:var(--blue-200)" aria-hidden="true"></i>
-        <h1 style="font-size:22px;margin:14px 0 8px">Self-registration is currently closed</h1>
+      `<div class="card accent" style="max-width:620px;margin:8px auto;text-align:center">
+        <i class="fa-solid fa-lock" style="font-size:26px;color:var(--muted)" aria-hidden="true"></i>
+        <h1 style="font-size:1.5rem;margin:16px 0 8px">Self-registration is currently closed</h1>
         <p class="muted">Open self-registration is not available right now. To request your assessment,
         contact Unified Technologies${opts.contactEmail ? ` at <a href="mailto:${esc(opts.contactEmail)}">${esc(opts.contactEmail)}</a>` : ''}.</p>
+        <a class="btn btn-ghost" href="/" style="margin-top:10px"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to the overview</a>
       </div>`,
-      { backHref: '/login', backLabel: 'Administrator sign-in' }
+      { hero: { kicker: '3-Day AI Readiness Assessment', title: 'Self-registration closed' } }
     )
   }
 
@@ -55,7 +56,7 @@ export function signupPage(opts: SignupOpts = {}): string {
       <em>${esc(d.descricao)}</em></span></li>`
   ).join('')
 
-  const form = `<form method="post" action="/comecar" class="card" novalidate>
+  const form = `<form method="post" action="/start" class="card" novalidate>
     <div class="card-head"><div>
       <h2><i class="fa-solid fa-building-columns" aria-hidden="true"></i> Your organisation</h2>
       <div class="sub">This information identifies your company in the report.</div>
@@ -155,37 +156,40 @@ export function signupPage(opts: SignupOpts = {}): string {
     </div>
   </form>`
 
-  const hero = `<section class="card signup-intro" style="margin-bottom:18px">
-    <div class="card-head"><div>
-      <h1 style="font-size:26px;line-height:1.2;margin:0">Measure your organisation's AI maturity</h1>
-      <div class="sub" style="font-size:14px;margin-top:8px">
-        A structured diagnosis across seven dimensions of AI readiness. Register below and we will e-mail you a
-        unique link to the questionnaire — no account, no password.
+  const intro = `<aside>
+    <section class="card accent">
+      <div class="card-head"><div>
+        <h2 style="font-size:1.15rem;margin:0">What happens next</h2>
+        <div class="sub" style="font-size:0.86rem;margin-top:8px">
+          We create your assessment and e-mail you a unique link to the questionnaire — no account, no password.
+        </div>
+      </div></div>
+      <div class="signup-facts">
+        <div><strong>7</strong><span>dimensions</span></div>
+        <div><strong>23</strong><span>questions</span></div>
+        <div><strong>~30</strong><span>minutes</span></div>
+        <div><strong>L0–L4</strong><span>model</span></div>
       </div>
-    </div></div>
-    <div class="signup-facts">
-      <div><strong>7</strong><span>dimensions</span></div>
-      <div><strong>23</strong><span>questions</span></div>
-      <div><strong>~30</strong><span>minutes</span></div>
-      <div><strong>1</strong><span>report, right away</span></div>
-    </div>
-    <div class="divider"></div>
-    <ul class="signup-dims">${dims}</ul>
-  </section>`
+      <div class="divider"></div>
+      <h3 style="font-size:0.8rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)">The seven dimensions</h3>
+      <ul class="signup-dims">${dims}</ul>
+    </section>
+    <p class="small muted" style="margin-top:14px">
+      <i class="fa-solid fa-lock" aria-hidden="true"></i>
+      Your answers are visible only to Unified Technologies and your organisation.
+    </p>
+  </aside>`
 
-  return doc(
-    { title: 'Start your AI maturity assessment', bodyClass: 'public-shell' },
-    publicHeader('/login', 'Administrator sign-in'),
-    `<div class="public-body">
-      <div class="signup-grid">
-        ${hero}
-        ${form}
-      </div>
-      <p class="small muted" style="text-align:center;margin:22px 0 0">
-        Unified Technologies · Co-Managed Security Intelligence · this is an automated self-registration form
-      </p>
-    </div>`
-  )
+  return publicShell('Start your assessment', `<div class="signup-grid">${intro}${form}</div>`, {
+    hero: {
+      kicker: 'Registration',
+      title: 'Measure your organisation’s AI maturity',
+      lede:
+        'A structured diagnosis across seven dimensions of AI readiness. Fill in the details below and we will send the questionnaire link to your e-mail.',
+      breadcrumb: '<a href="/">Overview</a> / Registration',
+    },
+    wide: true,
+  })
 }
 
 /** Confirmation shown right after a successful self-registration. */

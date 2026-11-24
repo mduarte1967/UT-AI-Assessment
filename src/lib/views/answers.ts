@@ -82,14 +82,14 @@ export function renderAnswersPage(ctx: AnswersContext): string {
   const body = `
 <div class="card" style="margin-bottom:18px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap">
   <div>
-    <h1 style="font-size:20px">Submitted responses</h1>
-    <div class="small muted">${esc(ctx.empresa)} · ${esc(ctx.responsavel)}${
+    <h2 style="font-size:1.05rem;margin:0">Submitted responses</h2>
+    <div class="small muted" style="margin-top:4px">${esc(ctx.empresa)} · ${esc(ctx.responsavel)}${
       ctx.submetidoEm ? ` · submitted on ${esc(fmtDate(ctx.submetidoEm))}` : ''
     }</div>
   </div>
   <div class="report-actions">
-    ${ctx.versaoRelatorio ? `<a class="btn btn-sm" href="/a/${ctx.token}/relatorio"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> View report</a>` : ''}
-    <a class="btn btn-sm btn-ghost" href="/a/${ctx.token}/relatorio.pdf" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> PDF</a>
+    ${ctx.versaoRelatorio ? `<a class="btn btn-sm" href="/a/${ctx.token}/report"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> View report</a>` : ''}
+    <a class="btn btn-sm btn-ghost" href="/a/${ctx.token}/report.pdf" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> PDF</a>
   </div>
 </div>
 
@@ -112,5 +112,12 @@ ${sections}
 </section>
 `
 
-  return publicShell('Submitted responses', body)
+  return publicShell('Submitted responses', body, {
+    hero: {
+      kicker: 'Read-only',
+      title: 'Your submitted responses',
+      lede: 'A record of everything you answered, per dimension, with the 12-month targets you declared.',
+      breadcrumb: esc(ctx.empresa),
+    },
+  })
 }

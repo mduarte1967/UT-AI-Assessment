@@ -6,6 +6,7 @@ export type DocOptions = {
   head?: string
 }
 
+/** Base HTML document. Roboto + Font Awesome + /static/app.css (UT design system). */
 export function doc({ title, bodyClass = '', head = '' }: DocOptions, ...body: string[]): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -17,7 +18,7 @@ export function doc({ title, bodyClass = '', head = '' }: DocOptions, ...body: s
 <link rel="icon" href="/static/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
 <link rel="stylesheet" href="/static/app.css">
 ${head}
@@ -28,11 +29,30 @@ ${body.join('\n')}
 </html>`
 }
 
-const NAV = [
-  { href: '/painel', icon: 'fa-gauge-high', label: 'Dashboard' },
-  { href: '/clientes/novo', icon: 'fa-user-plus', label: 'New client' },
-  { href: '/ajuda', icon: 'fa-circle-question', label: 'How to use' },
-  { href: '/configuracoes', icon: 'fa-gear', label: 'Settings' },
+const LOGO = `<a class="topbar-logo" href="{{HOME}}"><img src="/static/logo.png" alt="Unified Technologies"></a>`
+
+const MOBILE_SCRIPT = `<script>
+(function(){
+  var t = document.querySelector('.mobile-toggle');
+  var n = document.querySelector('.topbar-nav');
+  if (!t || !n) return;
+  t.addEventListener('click', function(){
+    var open = n.classList.toggle('open');
+    t.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+})();
+</script>`
+
+/* ── Admin console ──────────────────────────────────────────────────────── */
+
+/** Routes of the administrator console — a separate URL space (/admin). */
+export const ADMIN_ROOT = '/admin'
+
+const ADMIN_NAV = [
+  { href: '/admin', icon: 'fa-gauge-high', label: 'Dashboard' },
+  { href: '/admin/clients/new', icon: 'fa-user-plus', label: 'New client' },
+  { href: '/admin/help', icon: 'fa-circle-question', label: 'How to use' },
+  { href: '/admin/settings', icon: 'fa-gear', label: 'Settings' },
 ]
 
 export type AdminShellOptions = {
@@ -41,75 +61,161 @@ export type AdminShellOptions = {
   active: string
   admin: { nome: string; email: string }
   actions?: string
+  /** Narrow content column (forms, single cards). */
+  narrow?: boolean
 }
 
 export function adminShell(opts: AdminShellOptions, ...content: string[]): string {
-  const nav = NAV.map(
+  const nav = ADMIN_NAV.map(
     (n) =>
       `<a href="${n.href}" class="${n.href === opts.active ? 'active' : ''}"${
         n.href === opts.active ? ' aria-current="page"' : ''
-      }><i class="fa-solid ${n.icon}" aria-hidden="true"></i>${n.label}</a>`
+      }>${esc(n.label)}</a>`
   ).join('')
 
   return doc(
     { title: opts.title },
     `<a class="skip-link" href="#main">Skip to content</a>
-<div class="shell">
-  <aside class="sidebar">
-    <div class="brand">
-      <a href="/"><img src="/static/logo.png" alt="Unified Technologies"></a>
-    </div>
-    <nav class="nav" aria-label="Main navigation">
-      <span class="nav-label">Assessment</span>
+<header class="topbar">
+  <div class="topbar-inner">
+    ${LOGO.replace('{{HOME}}', '/admin')}
+    <button class="mobile-toggle" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
+    <nav class="topbar-nav" aria-label="Administrator navigation">
       ${nav}
-    </nav>
-    <div class="sidebar-foot">
-      <div class="side-user">
-        <span class="avatar" aria-hidden="true">${esc(opts.admin.nome.slice(0, 1).toUpperCase())}</span>
-        <div>
-          <strong>${esc(opts.admin.nome)}</strong>
-          <span>${esc(opts.admin.email)}</span>
-        </div>
-      </div>
-      <form method="post" action="/logout">
-        <button class="btn btn-ghost btn-sm btn-block" type="submit" style="background:transparent;color:#c8d4ea;border-color:rgba(255,255,255,.18)">
-          <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sign out
+      <form method="post" action="/admin/admin/logout" style="margin:0">
+        <button class="topbar-user" type="submit" title="Sign out">
+          <span class="avatar" aria-hidden="true">${esc(opts.admin.nome.slice(0, 1).toUpperCase())}</span>
+          ${esc(opts.admin.nome.split(' ')[0])}
+          <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
         </button>
       </form>
-    </div>
-  </aside>
-  <div class="main">
-    <header class="topbar">
-      <div>
-        ${opts.subtitle ? `<div class="crumbs">${opts.subtitle}</div>` : ''}
-        <h1>${esc(opts.title)}</h1>
-      </div>
-      <div class="report-actions">${opts.actions || ''}</div>
-    </header>
-    <main class="content" id="main">
-      ${content.join('\n')}
-    </main>
+    </nav>
   </div>
-</div>`
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    ${opts.subtitle ? `<div class="breadcrumb">${opts.subtitle}</div>` : ''}
+    <h1>${esc(opts.title)}</h1>
+    ${opts.actions ? `<div class="hero-actions">${opts.actions}</div>` : ''}
+  </div>
+</section>
+
+<main class="page-body" id="main">
+  <div class="page-wrap${opts.narrow ? ' narrow' : ''}">
+    ${content.join('\n')}
+  </div>
+</main>
+
+<footer class="site-footer slim">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© 2026 Unified Technologies · unifiedtech.com</span>
+      <span class="signature">Co-Managed Security Intelligence</span>
+    </div>
+  </div>
+</footer>
+${MOBILE_SCRIPT}`
   )
 }
 
-export function publicHeader(backHref?: string, backLabel?: string): string {
-  return `<header class="public-top">
-  <img src="/static/logo.png" alt="Unified Technologies">
-  ${
-    backHref
-      ? `<a class="btn btn-ghost btn-sm" href="${backHref}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> ${esc(backLabel || 'Back')}</a>`
-      : `<span class="small muted">AI Maturity Assessment</span>`
+/* ── Public (client-facing) site ─────────────────────────────────────────── */
+
+export type PublicShellOptions = {
+  /** Navy hero band; omit for pages that bring their own layout. */
+  hero?: {
+    kicker?: string
+    title: string
+    lede?: string
+    breadcrumb?: string
+    actions?: string
+    stats?: { value: string; label: string }[]
   }
+  /** Narrow (900px) or wide (1080px) body. */
+  wide?: boolean
+  head?: string
+  bodyClass?: string
+  /** Show the "Start the assessment" button in the top bar. */
+  startCta?: boolean
+}
+
+export function publicTopbar(opts: { startCta?: boolean } = {}): string {
+  return `<header class="topbar">
+  <div class="topbar-inner">
+    ${LOGO.replace('{{HOME}}', '/')}
+    <button class="mobile-toggle" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
+    <nav class="topbar-nav" aria-label="Main navigation">
+      <a href="/">Overview</a>
+      <a href="/#dimensions">Dimensions</a>
+      <a href="/#how-it-works">How it works</a>
+      <a href="/start" class="topbar-cta-lime"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> Start the assessment</a>
+    </nav>
+  </div>
 </header>`
 }
 
-export function publicShell(title: string, content: string, opts: { backHref?: string; backLabel?: string; head?: string; bodyClass?: string } = {}): string {
+function heroHtml(hero: NonNullable<PublicShellOptions['hero']>, wide: boolean): string {
+  const stats = hero.stats?.length
+    ? `<div class="hero-stats">${hero.stats
+        .map((s) => `<div><strong>${esc(s.value)}</strong><span>${esc(s.label)}</span></div>`)
+        .join('')}</div>`
+    : ''
+  return `<section class="page-hero">
+  <div class="${wide ? 'container' : 'container-narrow'}">
+    ${hero.breadcrumb ? `<div class="breadcrumb">${hero.breadcrumb}</div>` : ''}
+    ${hero.kicker ? `<span class="kicker">${esc(hero.kicker)}</span>` : ''}
+    <h1>${esc(hero.title)}</h1>
+    ${hero.lede ? `<p class="lede">${esc(hero.lede)}</p>` : ''}
+    ${hero.actions ? `<div class="hero-actions">${hero.actions}</div>` : ''}
+    ${stats}
+  </div>
+</section>`
+}
+
+function siteFooter(): string {
+  return `<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="brand">
+        <img src="/static/logo.png" alt="Unified Technologies">
+        <p>Ultra-secure, seamlessly integrated networks, infrastructure &amp; AI — delivered from the Caribbean.</p>
+      </div>
+      <div>
+        <h4>Assessment</h4>
+        <a href="/">Overview</a>
+        <a href="/#dimensions">The seven dimensions</a>
+        <a href="/#how-it-works">How it works</a>
+        <a href="/start">Start the assessment</a>
+      </div>
+      <div>
+        <h4>Deliverables</h4>
+        <a href="/#deliverables">Maturity report</a>
+        <a href="/#deliverables">Scorecard &amp; radar</a>
+        <a href="/#deliverables">90-day plan</a>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <a href="mailto:ai@unifiedtech.com">ai@unifiedtech.com</a>
+        <a href="https://www.unifiedtech.com" target="_blank" rel="noopener">unifiedtech.com</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Unified Technologies · unifiedtech.com</span>
+      <span class="signature">Co-Managed Security Intelligence</span>
+    </div>
+  </div>
+</footer>`
+}
+
+export function publicShell(title: string, content: string, opts: PublicShellOptions = {}): string {
   return doc(
     { title, head: opts.head, bodyClass: opts.bodyClass || 'public-shell' },
-    publicHeader(opts.backHref, opts.backLabel),
-    `<div class="public-body">${content}</div>`
+    `<a class="skip-link" href="#main">Skip to content</a>`,
+    publicTopbar({ startCta: opts.startCta }),
+    opts.hero ? heroHtml(opts.hero, !!opts.wide) : '',
+    `<main id="main" class="public-body${opts.wide ? ' wide' : ''}">${content}</main>`,
+    siteFooter(),
+    MOBILE_SCRIPT
   )
 }
 
