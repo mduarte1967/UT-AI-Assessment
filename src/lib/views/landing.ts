@@ -29,7 +29,7 @@ const STEPS = [
 const DELIVERABLES = [
   ['fa-map-location-dot', 'Business outcome map', 'The objectives, KPIs and constraints you declare, translated into the priorities the plan serves.'],
   ['fa-gauge-high', 'AI Maturity Index', 'A single weighted score on the 1–5 scale (Strategy 15%, Use Cases 20%, Data 15%, Technology 15%, Security 15%, People 10%, Economics 10%).'],
-  ['fa-table-list', 'Scorecard for the seven dimensions', 'Current level, 12-month target, gap, weighted gap and P0–P4 priority for each dimension.'],
+  ['fa-table-list', 'Scorecard for the seven dimensions', 'Current level, framework benchmark, gap, weighted gap and P0–P4 priority for each dimension.'],
   ['fa-chart-simple', 'Current × target radar', 'A visual comparison between where you are today and where the organisation intends to be.'],
   ['fa-diagram-project', 'Initiatives, split in two families', 'Business transformation initiatives that deliver results, and AI enabling initiatives that make them possible — each scored on seven criteria and classified P0–P4.'],
   ['fa-file-arrow-down', 'Report in HTML, PDF and XLSX', 'Read it online or download it for the board — every submission becomes a new report version.'],
@@ -137,7 +137,7 @@ export function landingPage(opts: LandingOpts = {}): string {
         <span class="kicker">What you receive</span>
         <h2 style="font-size:1.85rem">A report your board can act on</h2>
         <p class="muted">The report is written for decision-makers: no dashboards to interpret,
-          no raw questionnaire. It states the current level, the gap to the 12-month target
+          no raw questionnaire. It states the current level, the gap to the framework benchmark
           and what to do next, in order.</p>
         <div class="ut-card navy" style="margin-top:26px">
           <div class="num" style="color:var(--lime)">Scoring method</div>

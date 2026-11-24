@@ -569,7 +569,7 @@ function motivoFor(row: ScoreRow | undefined, def: InitiativeDef): string {
     row.atual <= 0
       ? 'not assessed'
       : `at ${row.atual.toFixed(1)}/5 (${row.short})`
-  if (row.gap <= 0) return `${def.trigger} — declared target already met.`
+  if (row.gap <= 0) return `${def.trigger} — benchmark already met.`
   return `${def.trigger}. ${row.short} is ${state}, target ${row.meta}/5, gap ${row.gap.toFixed(1)}.`
 }
 

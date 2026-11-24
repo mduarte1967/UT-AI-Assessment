@@ -35,7 +35,7 @@ export type ClientRow = {
 let seedPromise: Promise<void> | null = null
 
 /** Bump when the seeded content changes (e.g. language of the question bank). */
-const SEED_VERSION = '4'
+const SEED_VERSION = '5'
 
 /** Legacy Portuguese option values written by v1 of the app, mapped to the English labels. */
 const LEGACY_VERTICAIS: Record<string, string> = {

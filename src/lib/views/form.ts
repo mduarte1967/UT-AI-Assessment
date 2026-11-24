@@ -1,7 +1,7 @@
 import { DIMENSIONS, MATURITY_MATRIX, MATURITY_LABELS, PERSONA_DESC, PERSONA_LABEL } from '../questions'
 import type { DimKey } from '../questions'
 import type { QRow } from '../scoring'
-import { isAnswered } from '../scoring'
+import { isAnswered, selectionOf } from '../scoring'
 import { esc, fmtDate } from '../util'
 import { publicShell } from './layout'
 
@@ -310,14 +310,24 @@ function inputHtml(q: QRow, valor: unknown): string {
   }
 
   if (q.tipo === 'hibrido') {
+    const sel = selectionOf(valor)
     return `<div class="hybrid">
       ${scaleHtml(q, levelOf(valor), 'hibrido')}
-      <label class="ev-field" for="q-${q.id}-ev">
-        <span class="ev-label"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i> Evidence that supports the level you selected <span class="muted">(recommended)</span></span>
-        <textarea id="q-${q.id}-ev" data-qid="${q.id}" data-tipo="hibrido" rows="2" maxlength="600" placeholder="Systems, documents, teams, controls or metrics that justify the score…">${esc(
-          textOf(valor)
-        )}</textarea>
-      </label>
+      <div class="ev-block">
+        <span class="ev-label"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i> Evidence that supports the level you selected <span class="muted">(select all that apply)</span></span>
+        <div class="opts" role="group" aria-label="Evidence for ${esc(q.texto)}">
+          ${(q.opcoes || [])
+            .map(
+              (o, i) => `<label class="opt">
+              <input type="checkbox" id="q-${q.id}-${i}" value="${i}" data-qid="${q.id}" data-tipo="hibrido" ${
+                sel.includes(i) ? 'checked' : ''
+              }>
+              <span>${esc(o.label)}</span>
+            </label>`
+            )
+            .join('')}
+        </div>
+      </div>
     </div>`
   }
 
@@ -363,7 +373,7 @@ function formScript(token: string): string {
   return `
 (function(){
   var TOKEN = ${JSON.stringify(token)};
-  var pendingQ = {}, pendingTargets = {}, inFlight = false, timer = null;
+  var pendingQ = {}, inFlight = false, timer = null;
 
   function setState(kind, text){
     ['save-state','sticky-state'].forEach(function(id){
@@ -375,13 +385,16 @@ function formScript(token: string): string {
   }
 
   function radioVal(qid){
-    var c = document.querySelector('input[data-qid="'+qid+'"]:checked');
+    var c = document.querySelector('input[type=radio][data-qid="'+qid+'"]:checked');
     return c ? Number(c.value) : 0;
   }
 
-  function evText(qid){
-    var ta = document.getElementById('q-'+qid+'-ev');
-    return ta ? ta.value.trim() : '';
+  function selVals(qid){
+    var out = [];
+    document.querySelectorAll('input[type=checkbox][data-qid="'+qid+'"]').forEach(function(c){
+      if (c.checked) out.push(Number(c.value));
+    });
+    return out;
   }
 
   function valFor(qid, tipo){
@@ -390,19 +403,16 @@ function formScript(token: string): string {
       return v ? { v: v } : null;
     }
     if (tipo === 'hibrido') {
-      var hv = radioVal(qid), ht = evText(qid);
-      if (!hv && !ht) return null;
-      return { v: hv || 0, t: ht };
+      var hv = radioVal(qid), hs = selVals(qid);
+      if (!hv && !hs.length) return null;
+      return { v: hv || 0, sel: hs };
     }
     if (tipo === 'escolha') {
-      var checked = document.querySelector('input[data-qid="'+qid+'"]:checked');
+      var checked = document.querySelector('input[type=radio][data-qid="'+qid+'"]:checked');
       return checked ? { i: Number(checked.value) } : null;
     }
     if (tipo === 'multipla') {
-      var sel = [];
-      document.querySelectorAll('input[type=checkbox][data-qid="'+qid+'"]').forEach(function(c){
-        if (c.checked) sel.push(Number(c.value));
-      });
+      var sel = selVals(qid);
       return sel.length ? { sel: sel } : null;
     }
     var ta = document.getElementById('q-'+qid);
@@ -470,17 +480,15 @@ function formScript(token: string): string {
     Object.keys(pendingQ).forEach(function(k){
       out.respostas.push({ question_id: Number(k), valor: pendingQ[k] });
     });
-    var t = Object.keys(pendingTargets);
-    if (t.length) out.targets = t.map(function(k){ return { dimensao: k, meta: pendingTargets[k] }; });
     return out;
   }
 
   function flush(force){
     var p = payload();
-    if (!p.respostas.length && !p.targets) return Promise.resolve();
+    if (!p.respostas.length) return Promise.resolve();
     if (inFlight) { if (force) setTimeout(function(){ flush(true); }, 500); return Promise.resolve(); }
     inFlight = true;
-    pendingQ = {}; pendingTargets = {};
+    pendingQ = {};
     setState('saving', '<i class="fa-solid fa-circle-notch fa-spin"></i> saving…');
     return fetch('/api/a/'+TOKEN+'/save', {
       method: 'POST',
@@ -490,11 +498,11 @@ function formScript(token: string): string {
       if (!r.ok) throw new Error('http '+r.status);
       inFlight = false;
       setState('saved', '<i class="fa-solid fa-circle-check"></i> saved automatically');
-      if (Object.keys(pendingQ).length || Object.keys(pendingTargets).length) flush(false);
+      if (Object.keys(pendingQ).length) flush(false);
     }).catch(function(){
       inFlight = false;
       p.respostas.forEach(function(r){ pendingQ[r.question_id] = r.valor; });
-      if (p.targets) p.targets.forEach(function(t){ pendingTargets[t.dimensao] = t.meta; });
+
       setState('error', '<i class="fa-solid fa-triangle-exclamation"></i> could not save — retrying shortly');
       setTimeout(function(){ flush(false); }, 3000);
     });
@@ -517,7 +525,7 @@ function formScript(token: string): string {
     var el = ev.target;
     if (!el || el.tagName !== 'TEXTAREA' || !el.matches('[data-tipo]')) return;
     var tipo = el.getAttribute('data-tipo');
-    if (tipo !== 'texto' && tipo !== 'hibrido') return;
+    if (tipo !== 'texto') return;
     var qid = Number(el.getAttribute('data-qid'));
     var val = valFor(qid, tipo);
     pendingQ[qid] = val;
@@ -526,19 +534,6 @@ function formScript(token: string): string {
   });
 
   document.addEventListener('click', function(ev){
-    var btn = ev.target.closest('[data-target]');
-    if (btn) {
-      var key = btn.getAttribute('data-target');
-      var lvl = Number(btn.getAttribute('data-level'));
-      btn.parentElement.querySelectorAll('[data-target]').forEach(function(b){
-        var on = b === btn;
-        b.classList.toggle('on', on);
-        b.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
-      pendingTargets[key] = lvl;
-      queue();
-      return;
-    }
     var jump = ev.target.closest('[data-jump]');
     if (jump) {
       var q = jump.getAttribute('data-jump');

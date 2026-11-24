@@ -431,6 +431,23 @@ table.data .client-sub { font-size: 0.75rem; color: var(--muted); }
 .q-help { font-size: 0.8rem; color: var(--muted); margin-bottom: 12px; }
 .q-status { font-size: 0.7rem; margin-left: 6px; }
 
+/* ── benchmark + selected-option chips ──────────────────────────────────── */
+.pick-chip {
+  display: inline-block; font-size: 0.72rem; font-weight: 600; line-height: 1.5;
+  color: var(--ink-2); background: var(--alt, #F5F7FA); border: 1px solid var(--line);
+  border-radius: 5px; padding: 1px 7px; margin: 0 4px 4px 0;
+}
+.bench-note {
+  display: flex; gap: 11px; align-items: flex-start; margin-top: 14px;
+  border: 1px solid #DDE9AE; background: #FBFDF3; border-radius: var(--r); padding: 12px 14px;
+  font-size: 0.82rem; line-height: 1.55; color: var(--ink-2);
+}
+.bench-note > i { color: var(--lime-dark); font-size: 0.95rem; margin-top: 2px; }
+.bench-note strong { color: var(--navy); }
+.ev-block { margin-top: 4px; }
+.ev-block .opts { gap: 6px; }
+.ev-block .opt { padding: 8px 11px; font-size: 0.83rem; }
+
 /* ── v2 method: persona pills, sub-blocks, hybrid evidence ───────────────── */
 .pill {
   display: inline-flex; align-items: center; gap: 6px; font-size: 0.66rem; font-weight: 800;

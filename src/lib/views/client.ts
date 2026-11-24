@@ -1,9 +1,9 @@
-import { DIMENSIONS, LEVEL_LABELS } from '../questions'
+import { DIMENSIONS, LEVEL_LABELS, TARGET_BENCHMARK } from '../questions'
 import { esc, fmtDate, fmtDateTime, estadoLabel, estadoTone, formatIndex } from '../util'
 import { adminShell, badge, alertBox } from './layout'
 import { priorityBadge } from '../report'
 import type { QRow, ScoreRow } from '../scoring'
-import { isAnswered, levelOf } from '../scoring'
+import { isAnswered, levelOf, optionLabels } from '../scoring'
 import { COUNTRY_NAMES, DEFAULT_COUNTRY, REGION_SUGGESTIONS, CLIENT_VERTICALS, CLIENT_SIZES } from '../geo'
 
 export const VERTICAIS = CLIENT_VERTICALS
@@ -342,12 +342,16 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
   </section>`
 
   const metasCard = `<section class="card">
-    <div class="card-head"><div><h2>Targets declared for 12 months</h2><div class="sub">Basis of the current × target comparison in the radar</div></div></div>
+    <div class="card-head"><div><h2>Framework benchmark by dimension</h2><div class="sub">Fixed reference of the method — the basis of the current × benchmark comparison</div></div></div>
     <div class="targets">${DIMENSIONS.map((dim) => {
-      const m = Number(d.metas[dim.key] ?? 3)
+      const m = Math.max(1, Math.min(5, TARGET_BENCHMARK[dim.key] ?? 3))
       return `<div class="target-row"><div><span class="tname">${esc(dim.short)}</span>
-        <span class="tnow">${LEVEL_LABELS[m - 1] || ''}</span></div><span class="lvl-chip l${m}">${m}</span></div>`
+        <span class="tnow">${LEVEL_LABELS[m - 1] || ''} · ${Math.round(dim.peso * 100)}% weight</span></div><span class="lvl-chip l${m}">${m}</span></div>`
     }).join('')}</div>
+    <div class="small muted" style="margin-top:12px">
+      The benchmark is not declared by the client: every assessment is compared against the same
+      reference, so gaps stay comparable across clients and across cycles.
+    </div>
   </section>`
 
   return adminShell(
@@ -381,11 +385,13 @@ export function clientDetailPage(admin: { nome: string; email: string }, d: Clie
 
 function answerLabel(q: QRow, val: unknown): string {
   if (val === null || val === undefined) return '—'
-  if (q.tipo === 'escala') {
+  if (q.tipo === 'escala' || q.tipo === 'hibrido') {
     const v = Number((val as any)?.v ?? val)
-    const idx = v - 1
-    const label = q.rubrica?.labels?.[idx] || ''
-    return label ? `L${idx} — ${label}` : `L${idx}`
+    if (!v) return '—'
+    const label = q.rubrica?.labels?.[v - 1] || ''
+    const base = label ? `L${v} — ${label}` : `L${v}`
+    const items = optionLabels(q, val)
+    return items.length ? `${base}<div class="small muted" style="margin-top:4px">${items.join(' · ')}</div>` : base
   }
   if (q.tipo === 'escolha') {
     const i = Number((val as any)?.i ?? val)

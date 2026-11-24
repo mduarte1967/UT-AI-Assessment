@@ -1,5 +1,5 @@
-import { DIMENSIONS, LEVEL_LABELS } from '../questions'
-import { isAnswered, levelOf, type QRow } from '../scoring'
+import { DIMENSIONS, LEVEL_LABELS, TARGET_BENCHMARK } from '../questions'
+import { isAnswered, levelOf, optionLabels, type QRow } from '../scoring'
 import { esc, fmtDate } from '../util'
 import { publicShell, levelChip } from './layout'
 
@@ -21,9 +21,13 @@ function answerLabel(q: QRow, val: unknown): string {
     const v = Number((val as any)?.v ?? val)
     if (!v) return '<span class="muted">Not answered</span>'
     const label = q.rubrica?.labels?.[v - 1] || ''
-    const ev = String((val as any)?.t ?? '').trim()
     const base = label ? `L${v} — ${esc(label)}` : `L${v}`
-    return ev ? `${base}<div class="small muted" style="margin-top:4px"><i class="fa-solid fa-clipboard-list"></i> ${esc(ev)}</div>` : base
+    const items = optionLabels(q, val)
+    return items.length
+      ? `${base}<div class="small muted" style="margin-top:5px"><i class="fa-solid fa-clipboard-list"></i> ${items
+          .map((i) => `<span class="pick-chip">${esc(i)}</span>`)
+          .join(' ')}</div>`
+      : base
   }
   if (q.tipo === 'escolha') {
     const i = Number((val as any)?.i ?? val)
@@ -74,17 +78,14 @@ export function renderAnswersPage(ctx: AnswersContext): string {
     </section>`
   }).join('')
 
-  const metasRows = DIMENSIONS.map(
-    (d) => {
-      const raw = Number(ctx.metas[d.key])
-      const m = Number.isFinite(raw) && raw >= 1 ? Math.min(5, Math.round(raw)) : 3
-      return `<div class="target-row">
+  const metasRows = DIMENSIONS.map((d) => {
+    const m = Math.max(1, Math.min(5, TARGET_BENCHMARK[d.key] ?? 3))
+    return `<div class="target-row">
       <div><span class="tname">${esc(d.short)}</span>
-      <span class="tnow">${esc(LEVEL_LABELS[m - 1] || '')}</span></div>
+      <span class="tnow">${esc(LEVEL_LABELS[m - 1] || '')} · ${Math.round(d.peso * 100)}% weight</span></div>
       ${levelChip(m)}
     </div>`
-    }
-  ).join('')
+  }).join('')
 
   const body = `
 <div class="card" style="margin-bottom:18px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap">
@@ -113,7 +114,7 @@ ${sections}
 <section class="section">
   <div class="section-head">
     <div class="dim-icon"><i class="fa-solid fa-bullseye" aria-hidden="true"></i></div>
-    <div><h2>Targets declared for 12 months</h2><div class="sub">Comparison used in the current × target radar</div></div>
+    <div><h2>Framework benchmark by dimension</h2><div class="sub">Fixed reference of the method — the basis of the current × benchmark comparison</div></div>
   </div>
   <div class="targets" style="margin-top:12px">${metasRows}</div>
 </section>
@@ -123,7 +124,7 @@ ${sections}
     hero: {
       kicker: 'Read-only',
       title: 'Your submitted responses',
-      lede: 'A record of everything you answered, per dimension, with the 12-month targets you declared.',
+      lede: 'A record of everything you answered, per dimension, with the framework benchmark used for comparison.',
       breadcrumb: esc(ctx.empresa),
     },
   })

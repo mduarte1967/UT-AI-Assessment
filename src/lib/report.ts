@@ -4,6 +4,7 @@ import { computeIndex, computeScorecard, classifyPriority, priorityScore, WAVE_M
 import type { RecommendedInitiative } from './initiatives'
 import { selectInitiatives, splitByCategory, selectionNote, CATEGORY_META } from './initiatives'
 import { esc, formatIndex, fmtDate, fmtDateTime } from './util'
+import { optionLabels } from './scoring'
 
 /* ── Input / output shapes ──────────────────────────────────────────────── */
 
@@ -32,6 +33,9 @@ export type OutcomeEntry = {
   dimensao: string
   dimLabel: string
   question: string
+  /** Selected closed options. */
+  items: string[]
+  /** Free-text answer of a legacy bank, when present. */
   answer: string
 }
 
@@ -39,7 +43,8 @@ export type EvidenceEntry = {
   ref: string
   dimLabel: string
   level: number
-  text: string
+  /** Labels of the closed evidence options selected. */
+  items: string[]
 }
 
 export type ReportData = {
@@ -82,9 +87,10 @@ export function buildReportData(input: ReportInput): ReportData {
     const dimLabel = DIM_MAP[q.dimensao]?.short || q.dimensao
 
     if (q.persona === 'O') {
+      const items = optionLabels(q, valor)
       const answer = textOf(valor)
-      if (answer) {
-        outcomes.push({ ref: q.ref, dimensao: q.dimensao, dimLabel, question: q.texto, answer })
+      if (items.length || answer) {
+        outcomes.push({ ref: q.ref, dimensao: q.dimensao, dimLabel, question: q.texto, items, answer })
       }
       levelsByRef[q.ref] = null
       continue
@@ -94,14 +100,17 @@ export function buildReportData(input: ReportInput): ReportData {
     levelsByRef[q.ref] = level
 
     if (q.persona === 'H' && level !== null) {
-      const text = textOf(valor)
-      if (text) evidencia.push({ ref: q.ref, dimLabel, level, text })
+      const items = optionLabels(q, valor)
+      const answer = textOf(valor)
+      if (items.length || answer) evidencia.push({ ref: q.ref, dimLabel, level, items, answer } as any)
     }
   }
 
   // Strategy objectives are captured by STR01 — used in the executive summary.
   const str01 = input.questions.find((q) => q.ref === 'STR01')
-  const objetivo = str01 ? textOf(input.respostas[str01.id]) : ''
+  const objetivo = str01
+    ? optionLabels(str01, input.respostas[str01.id]).join(' · ') || textOf(input.respostas[str01.id])
+    : ''
 
   const iniciativas = selectInitiatives({ scorecard, levelsByRef })
   const grupos = splitByCategory(iniciativas)
@@ -351,7 +360,7 @@ export function renderReport(r: ReportRender): string {
     <div class="who">${esc(empresa)} · ${esc(c.razao_social)}</div>
     <div class="cover-meta">
       <div><strong>${formatIndex(data.indice?.escala5)}/5</strong>Current maturity</div>
-      <div><strong>${formatIndex(data.indice?.target)}/5</strong>Target maturity</div>
+      <div><strong>${formatIndex(data.indice?.target)}/5</strong>Benchmark target</div>
       <div><strong>${(data.indice?.weightedGap ?? 0).toFixed(2)}</strong>Weighted gap</div>
       <div><strong>${esc(c.vertical || 'Not provided')}</strong>Industry</div>
       <div><strong>${esc(c.tamanho_faixa || 'Not provided')}</strong>Company size</div>
@@ -385,7 +394,7 @@ export function renderReport(r: ReportRender): string {
       <div>
         <p><strong>${esc(empresa)}</strong> has a weighted AI maturity index of <strong>${formatIndex(
           data.indice?.escala5
-        )}/5</strong> against a declared target of <strong>${formatIndex(
+        )}/5</strong> against the framework benchmark of <strong>${formatIndex(
           data.indice?.target
         )}/5</strong> — a weighted gap of <strong>${(data.indice?.weightedGap ?? 0).toFixed(
           2
@@ -421,13 +430,18 @@ export function renderReport(r: ReportRender): string {
     </div>
   </section>`
 
+  const itemsHtml = (items: string[], fallback: string) =>
+    items.length
+      ? items.map((i) => `<span class="pick-chip">${esc(i)}</span>`).join(' ')
+      : esc(fallback || '—')
+
   const outcomeRows = (data.outcomes || [])
     .map(
       (o) => `<tr>
       <td class="num"><code>${esc(o.ref)}</code></td>
       <td><span class="badge accent">${esc(o.dimLabel)}</span></td>
       <td class="small">${esc(o.question)}</td>
-      <td>${esc(o.answer)}</td>
+      <td>${itemsHtml(o.items || [], o.answer || '')}</td>
     </tr>`
     )
     .join('')
@@ -452,7 +466,7 @@ export function renderReport(r: ReportRender): string {
   const scorecard = `<section class="card" id="scorecard" style="margin-bottom:18px">
     <div class="card-head"><div>
       <h2>AI maturity scorecard</h2>
-      <div class="sub">Current level, declared target, gap and weighted contribution — 1 to 5 scale</div>
+      <div class="sub">Current level, benchmark target, gap and weighted contribution — 1 to 5 scale</div>
     </div></div>
     ${scorecardTable(data.scorecard || [])}
     <div class="divider"></div>
@@ -463,17 +477,26 @@ export function renderReport(r: ReportRender): string {
       Each dimension level is the mean of its maturity (M) and hybrid (H) answers, to one decimal. Outcome-discovery (O)
       answers are excluded from the index. The overall index is the <strong>weighted</strong> mean of the seven dimensions.
     </div>
+    <div class="bench-note">
+      <i class="fa-solid fa-ruler-combined" aria-hidden="true"></i>
+      <div>
+        <strong>Targets are the framework benchmark, not a self-declared ambition.</strong>
+        Every client is measured against the same reference — Strategy 3.0, Use Cases 4.0, Data 3.0, Technology 4.0,
+        Security 3.0, People 3.0 and Economics 3.0 — which weighted by the index gives
+        <strong>${formatIndex(data.indice?.target)}/5</strong>. That keeps the gap comparable across clients and across cycles.
+      </div>
+    </div>
   </section>`
 
   const radar = `<section class="card" id="radar" style="margin-bottom:18px">
     <div class="card-head"><div>
       <h2>Current × target radar</h2>
-      <div class="sub">Comparison between the current level and the declared target per dimension</div>
+      <div class="sub">Comparison between the current level and the framework benchmark per dimension</div>
     </div></div>
     <div class="radar-wrap">${radarSvg(data.scorecard || [])}</div>
     <div class="legend">
       <span class="k"><i style="background:#0B2545"></i> Current level</span>
-      <span class="k"><i style="background:#8FAE00;height:0;border-top:2px dashed #8FAE00"></i> Declared target</span>
+      <span class="k"><i style="background:#8FAE00;height:0;border-top:2px dashed #8FAE00"></i> Benchmark target</span>
     </div>
   </section>`
 
@@ -493,7 +516,7 @@ export function renderReport(r: ReportRender): string {
   const matrix = `<section class="card page-break" id="matriz" style="margin-bottom:18px">
     <div class="card-head"><div>
       <h2>Maturity-to-initiative matrix</h2>
-      <div class="sub">Anchor recommendation per dimension at the declared target level — a catalogue, not a prescription</div>
+      <div class="sub">Anchor recommendation per dimension at the benchmark target level — a catalogue, not a prescription</div>
     </div></div>
     <div class="table-wrap" style="border:0"><table class="data" style="font-size:13px">
       <thead><tr><th>Dimension</th><th class="num">Current</th><th class="num">Target</th><th class="num">Gap</th><th>Anchor recommendation</th></tr></thead>
@@ -635,14 +658,16 @@ export function renderReport(r: ReportRender): string {
     ? `<section class="card" id="evidencia" style="margin-bottom:18px">
         <div class="card-head"><div>
           <h2>Evidence recorded</h2>
-          <div class="sub">Declared context behind the hybrid answers — read alongside the score, never instead of it</div>
+          <div class="sub">Evidence options selected in the hybrid questions — read alongside the score, never instead of it</div>
         </div></div>
         <dl class="meta-grid">
           ${(data.evidencia || [])
             .map(
               (e) => `<div style="grid-column:1/-1">
               <dt><code>${esc(e.ref)}</code> · ${esc(e.dimLabel)} · scored ${e.level}/5</dt>
-              <dd>${esc(e.text)}</dd>
+              <dd>${(e.items || []).length
+                ? (e.items || []).map((i) => `<span class="pick-chip">${esc(i)}</span>`).join(' ')
+                : '<span class="muted">No evidence option selected.</span>'}</dd>
             </div>`
             )
             .join('')}

@@ -65,7 +65,8 @@ export function helpPage(o: HelpOpts): string {
     'The client answers through the link (no password)',
     `The client opens the link in the browser, answers the 7 dimensions (~30 min) and the responses are
      <strong>saved automatically</strong> — they can close and come back later, until they submit.
-     In the last step they review outstanding items and declare the 12-month targets per dimension.
+     In the last step they review the outstanding items. There is no target to declare: every assessment is
+     measured against the framework benchmark.
      There is nothing to fill in about initiatives: the method generates them.`
   )}
 
@@ -124,7 +125,7 @@ export function helpPage(o: HelpOpts): string {
         3 are hybrid — scored and keeping the evidence text. Each dimension's level is the <strong>mean</strong> of its
         scored answers on the 1–5 scale (1 Initial, 2 Emerging, 3 Defined, 4 Managed, 5 Optimized).
         The AI Maturity Index is the <strong>weighted</strong> mean of the seven dimensions (Use Cases 20%; Strategy,
-        Data, Technology and Security 15% each; People and Economics 10% each). The gap is the declared target minus
+        Data, Technology and Security 15% each; People and Economics 10% each). The gap is the framework benchmark minus
         the current level, and each initiative is scored on seven weighted criteria to a 0–100 mark, classified
         <strong>P0</strong> (critical foundation) to <strong>P4</strong> (deferred).</p>
       </details>
