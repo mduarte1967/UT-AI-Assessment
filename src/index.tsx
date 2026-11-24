@@ -4,6 +4,7 @@ import { secureHeaders } from 'hono/secure-headers'
 import { SCHEMA_SQL, COLUMN_MIGRATIONS } from './lib/schema'
 import {
   ensureSeed,
+  resetSeedCache,
   questionsFor,
   assessmentByToken,
   responsesMap,
@@ -63,7 +64,14 @@ async function bootstrap(env: Env) {
         await env.DB.prepare(sql).run().catch(() => undefined)
       }
       await ensureSeed(env)
-    })()
+    })().catch((err) => {
+      // A rejected promise kept on the memo would turn every following request
+      // in this isolate into a 500 until it is recycled. Drop it so the next
+      // request retries the bootstrap, and surface the cause in the logs.
+      bootPromise = null
+      resetSeedCache()
+      console.error('[bootstrap] failed', err)
+    })
   }
   return bootPromise
 }

@@ -32,21 +32,38 @@ async function pbkdf2(password: string, salt: Uint8Array, iterations: number): P
   return new Uint8Array(bits)
 }
 
+/**
+ * The Workers runtime hard-caps PBKDF2 at 100,000 iterations and throws a
+ * NotSupportedError above it. Local miniflare/Node does not, so a higher value
+ * passes every local test and then fails in production. Hashing and seeding must
+ * therefore stay at or below this ceiling.
+ */
+export const PBKDF2_MAX_ITERATIONS = 100000
+
 /** Formato: pbkdf2$<iteracoes>$<saltB64>$<hashB64> */
 export async function hashPassword(password: string): Promise<string> {
   const salt = new Uint8Array(16)
   crypto.getRandomValues(salt)
-  const hash = await pbkdf2(password, salt, 150000)
-  return `pbkdf2$150000$${toB64(salt)}$${toB64(hash)}`
+  const iterations = PBKDF2_MAX_ITERATIONS
+  const hash = await pbkdf2(password, salt, iterations)
+  return `pbkdf2$${iterations}$${toB64(salt)}$${toB64(hash)}`
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const parts = String(stored || '').split('$')
   if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false
   const iterations = Number(parts[1])
+  if (!Number.isFinite(iterations) || iterations <= 0) return false
   const salt = fromB64(parts[2])
   const expected = fromB64(parts[3])
-  const actual = await pbkdf2(password, salt, iterations)
+  let actual: Uint8Array
+  try {
+    actual = await pbkdf2(password, salt, iterations)
+  } catch {
+    // A hash written above the runtime ceiling cannot be verified here.
+    // Fail closed instead of turning the login into a 500.
+    return false
+  }
   if (actual.length !== expected.length) return false
   let diff = 0
   for (let i = 0; i < actual.length; i++) diff |= actual[i] ^ expected[i]

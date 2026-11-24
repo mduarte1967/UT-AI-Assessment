@@ -185,12 +185,18 @@ export async function ensureSeed(env: Env): Promise<void> {
     // US/Caribbean one (Tax ID / country / ZIP). Legacy CNPJ values become the
     // Tax ID and records without a country default to Brazil, which is where
     // they were captured.
+    //
+    // `cnpj` only exists on databases created by migration 0001/0004 — a
+    // database created from the consolidated SCHEMA_SQL never had it. The
+    // statement therefore has to tolerate a missing column instead of aborting
+    // the whole seed.
     await db
       .prepare(
         `UPDATE clients SET tax_id = cnpj
           WHERE (tax_id IS NULL OR tax_id = '') AND cnpj IS NOT NULL AND cnpj <> ''`
       )
       .run()
+      .catch(() => undefined)
     await db
       .prepare(
         `UPDATE clients SET country = 'Brazil'
